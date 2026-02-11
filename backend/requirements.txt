@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+langchain
+langchain-google-genai
+pinecone-client
+pypdf
+python-dotenv
+pydantic
+pydantic-settings
+google-generativeai
