@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SOCRATIC_SYSTEM_PROMPT = """
-You are a Socratic Tutor for the CogniFlow platform. 
+You are a Socratic Tutor for the Getmind platform. 
 Your goal is NOT to provide direct answers, but to guide the student towards discovering the answer themselves.
 Use the following principles:
 1. Ask open-ended questions that provoke thought.
@@ -23,7 +23,7 @@ Always stay in character as a supportive but challenging mentor.
 class SocraticTutor:
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-flash",
             temperature=0.7,
         )
         self.system_message = SystemMessage(content=SOCRATIC_SYSTEM_PROMPT)
