@@ -2,15 +2,16 @@ import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
+from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
 
 load_dotenv()
 
 class RAGManager:
     def __init__(self):
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        self.index_name = os.getenv("PINECONE_INDEX_NAME", "cogniflow")
+        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        # In a real app, this would point to a persistent Pinecone/Chroma index
+        self.vector_store = None
         
     def process_pdf(self, file_path: str):
         loader = PyPDFLoader(file_path)
@@ -18,25 +19,26 @@ class RAGManager:
         
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
-            chunk_overlap=100,
+            chunk_overlap=200, # Increased overlap for better context continuity
             separators=["\n\n", "\n", ".", " ", ""]
         )
         chunks = text_splitter.split_documents(documents)
         return chunks
 
-    def upload_to_vector_db(self, documents):
-        # Implementation for Pinecone upload
-        # Note: Requires PINECONE_API_KEY in environment
-        vectorstore = PineconeVectorStore.from_documents(
-            documents, 
-            self.embeddings, 
-            index_name=self.index_name
-        )
-        return vectorstore
+    def create_vector_store(self, chunks):
+        """Creates an in-memory vector store for the session."""
+        try:
+            vector_store = FAISS.from_documents(chunks, self.embeddings)
+            return vector_store
+        except Exception as e:
+            print(f"Error creating vector store: {e}")
+            return None
 
-    def query(self, query_text: str, k: int = 3):
-        vectorstore = PineconeVectorStore.from_existing_index(
-            index_name=self.index_name,
-            embedding=self.embeddings
-        )
-        return vectorstore.similarity_search(query_text, k=k)
+    def query(self, vector_store, query_text: str, k: int = 5):
+        if not vector_store:
+            return []
+        
+        # Determine k based on query length/complexity if needed
+        # For now, retrieve top 5 relevant chunks
+        docs = vector_store.similarity_search(query_text, k=k)
+        return docs

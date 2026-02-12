@@ -55,10 +55,16 @@ async def upload_file(file: UploadFile = File(...)):
     # Process PDF and index it (This would be async in production)
     try:
         chunks = rag_manager.process_pdf(file_path)
-        # rag_manager.upload_to_vector_db(chunks) # Requires Pinecone API Key
-        # For now, we'll store chunks in memory for this session
-        sessions[file_id] = chunks
-        return {"file_id": file_id, "message": "File uploaded and processed"}
+        
+        # Create in-memory vector store for this session
+        vector_store = rag_manager.create_vector_store(chunks)
+        
+        if vector_store:
+            sessions[file_id] = vector_store
+            return {"file_id": file_id, "message": "File uploaded and processed"}
+        else:
+             raise HTTPException(status_code=500, detail="Failed to create vector store from PDF")
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -67,11 +73,12 @@ async def chat_endpoint(request: ChatRequest):
     try:
         # Get context from RAG
         # If we have real Pinecone, we query it. 
-        # For now, use dummy context or in-memory chunks if available
+        # For now, we search the in-memory FAISS store
         context_docs = []
         if request.file_id and request.file_id in sessions:
-            # Simple keyword search placeholder or just take top chunks
-            context_docs = sessions[request.file_id][:3] 
+            vector_store = sessions[request.file_id]
+            # Retrieve top 5 relevant chunks
+            context_docs = vector_store.similarity_search(request.message, k=5)
         
         reply = await tutor.get_response(
             chat_history=[], # Should parse from request.history

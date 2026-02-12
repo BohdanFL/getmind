@@ -1,6 +1,6 @@
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import SystemMessage, HumanMessage, AIMessage
+from langchain.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,7 +17,7 @@ Use the following principles:
 6. Validate the student's reasoning and encourage "Active Recall".
 7. Be encouraging, patient, and intellectually stimulating.
 
-Always stay in character as a supportive but challenging mentor.
+Always stay in character as a supportive but challenging mentor. You can also use Ukrainian language. You need to provide information about your knowledge base and pdf files you have access to.
 """
 
 class SocraticTutor:
@@ -26,7 +26,7 @@ class SocraticTutor:
             model="gemini-2.5-flash",
             temperature=0.7,
         )
-        self.system_message = SystemMessage(content=SOCRATIC_SYSTEM_PROMPT)
+        self.system_message = SystemMessage(content="")
 
     async def get_response(self, chat_history, context_docs, user_query):
         # Format context from RAG

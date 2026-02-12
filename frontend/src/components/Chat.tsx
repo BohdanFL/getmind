@@ -5,7 +5,11 @@ interface Message {
   content: string;
 }
 
-export default function Chat() {
+interface ChatProps {
+  fileId: string | null;
+}
+
+export default function Chat({ fileId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: "Вітаю! Я твій Сократівський тьютор. Що ми сьогодні будемо досліджувати?" }
   ]);
@@ -21,11 +25,14 @@ export default function Chat() {
     setLoading(true);
 
     try {
-      // Placeholder for API call
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input, history: messages })
+        body: JSON.stringify({ 
+          message: input, 
+          history: messages,
+          file_id: fileId // Send fileId to backend
+        })
       });
       const data = await response.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
@@ -43,6 +50,7 @@ export default function Chat() {
         <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
           Socratic Tutor
         </h2>
+        {fileId && <span className="text-xs text-emerald-400">Context Active ({fileId.slice(0,4)}...)</span>}
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

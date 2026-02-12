@@ -10,7 +10,7 @@ function App() {
       <header className="max-w-7xl mx-auto mb-12 flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">
-            Cogni<span className="text-blue-500">Flow</span>
+            Get<span className="text-blue-500">Mind</span>
           </h1>
           <p className="text-slate-400 mt-2">Екосистема для глибокого засвоєння знань</p>
         </div>
@@ -44,7 +44,7 @@ function App() {
 
         {/* Right Panel: Chat */}
         <div className="lg:col-span-5 h-full">
-          <Chat />
+          <Chat fileId={fileId} />
         </div>
       </div>
     </main>
