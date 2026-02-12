@@ -1,7 +1,7 @@
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from dotenv import load_dotenv
 
@@ -9,7 +9,10 @@ load_dotenv()
 
 class RAGManager:
     def __init__(self):
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        self.embeddings = OllamaEmbeddings(
+            model=os.getenv("OLLAMA_EMBEDDING_MODEL", "embeddinggemma"),
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+        )
         # In a real app, this would point to a persistent Pinecone/Chroma index
         self.vector_store = None
         
@@ -42,3 +45,27 @@ class RAGManager:
         # For now, retrieve top 5 relevant chunks
         docs = vector_store.similarity_search(query_text, k=k)
         return docs
+
+    def save_index(self, vector_store, path: str):
+        """Saves the vector store to disk."""
+        try:
+            vector_store.save_local(path)
+            print(f"✅ Vector store saved to {path}")
+            return True
+        except Exception as e:
+            print(f"❌ Error saving vector store: {e}")
+            return False
+
+    def load_index(self, path: str):
+        """Loads the vector store from disk."""
+        try:
+            vector_store = FAISS.load_local(
+                path, 
+                self.embeddings, 
+                allow_dangerous_deserialization=True # Safe for local dev
+            )
+            print(f"✅ Vector store loaded from {path}")
+            return vector_store
+        except Exception as e:
+            print(f"❌ Error loading vector store: {e}")
+            return None

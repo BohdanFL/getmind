@@ -10,3 +10,5 @@ pydantic
 pydantic-settings
 google-generativeai
 faiss-cpu
+langchain-ollama
+python-multipart

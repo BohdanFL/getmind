@@ -16,7 +16,7 @@ app = FastAPI(title="CogniFlow API", description="AI-driven Socratic Tuturing Pl
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,6 +77,13 @@ async def chat_endpoint(request: ChatRequest):
         context_docs = []
         if request.file_id and request.file_id in sessions:
             vector_store = sessions[request.file_id]
+        elif "default" in sessions:
+            # Fallback to default session if available
+            vector_store = sessions["default"]
+        else:
+            vector_store = None
+            
+        if vector_store:
             # Retrieve top 5 relevant chunks
             context_docs = vector_store.similarity_search(request.message, k=5)
         
@@ -89,6 +96,44 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         print(f"Error in chat: {e}")
         return {"reply": "Вибач, я не зміг обробити твоє запитання. Перевір API ключі."}
+
+@app.on_event("startup")
+async def startup_event():
+    # Check for existing PDF in uploads to pre-load
+    upload_dir = "uploads"
+    cache_dir = "vector_store_cache"
+    file_id = "default"
+
+    # Try loading from cache first
+    if os.path.exists(cache_dir):
+        print("Found cached vector store. Loading...")
+        vector_store = rag_manager.load_index(cache_dir)
+        if vector_store:
+            sessions[file_id] = vector_store
+            print(f"✅ Successfully loaded cached vector store into session '{file_id}'")
+            return
+
+    # If no cache, process existing PDF
+    if os.path.exists(upload_dir):
+        files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
+        if files:
+            # Load the first found PDF
+            file_path = os.path.join(upload_dir, files[0])
+            print(f"Loading default PDF: {files[0]}")
+            
+            try:
+                chunks = rag_manager.process_pdf(file_path)
+                vector_store = rag_manager.create_vector_store(chunks)
+                if vector_store:
+                    sessions[file_id] = vector_store
+                    print(f"✅ Successfully loaded default PDF into session '{file_id}'")
+                    
+                    # Save to cache
+                    rag_manager.save_index(vector_store, cache_dir)
+                else:
+                    print("❌ Failed to create vector store for default PDF")
+            except Exception as e:
+                print(f"❌ Error loading default PDF: {e}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

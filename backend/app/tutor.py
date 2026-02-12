@@ -1,5 +1,5 @@
 import os
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_ollama import ChatOllama
 from langchain.messages import SystemMessage, HumanMessage, AIMessage
 from dotenv import load_dotenv
 
@@ -22,11 +22,12 @@ Always stay in character as a supportive but challenging mentor. You can also us
 
 class SocraticTutor:
     def __init__(self):
-        self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+        self.llm = ChatOllama(
+            model=os.getenv("OLLAMA_MODEL", "gemma3n"),
             temperature=0.7,
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         )
-        self.system_message = SystemMessage(content="")
+        self.system_message = SystemMessage(content="Your goal to provide short and clear answers. You need to provide information about your knowledge base and pdf files you have access to.")
 
     async def get_response(self, chat_history, context_docs, user_query):
         # Format context from RAG
