@@ -6,8 +6,8 @@ function App() {
   const [fileId, setFileId] = useState<string | null>(null);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-8 font-sans">
-      <header className="max-w-7xl mx-auto mb-12 flex justify-between items-center">
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-8 flex flex-col font-sans">
+      <header className="max-w-7xl w-full mx-auto mb-10 flex shrink-0 justify-between items-center">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">
             Get<span className="text-blue-500">Mind</span>
@@ -21,10 +21,10 @@ function App() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-200px)]">
+      <div className="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-[500px] mb-12">
         {/* Left Panel: Content / Upload */}
         <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center p-6">
+          <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center p-6 min-h-[300px]">
             {!fileId ? (
               <PDFUpload onUploadSuccess={(id) => setFileId(id)} />
             ) : (
@@ -33,7 +33,7 @@ function App() {
               </div>
             )}
           </div>
-          <div className="h-32 bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="h-32 bg-slate-900 border border-slate-800 rounded-xl p-4 shrink-0">
             <h4 className="text-xs uppercase tracking-widest text-slate-500 mb-2">Cognitive Progress</h4>
             <div className="w-full bg-slate-800 rounded-full h-2">
               <div className="bg-blue-500 h-2 rounded-full w-[10%]"></div>
@@ -43,7 +43,7 @@ function App() {
         </div>
 
         {/* Right Panel: Chat */}
-        <div className="lg:col-span-5 h-full">
+        <div className="lg:col-span-5 h-full min-h-[400px]">
           <Chat fileId={fileId} />
         </div>
       </div>

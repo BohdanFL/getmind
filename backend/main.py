@@ -1,7 +1,9 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+from langchain.messages import HumanMessage, AIMessage
 import uvicorn
 import shutil
 import os
@@ -26,7 +28,6 @@ rag_manager = RAGManager()
 tutor = SocraticTutor()
 
 # In-memory storage for simplicity in MVP
-# In real app, use Database
 sessions = {}
 
 class ChatRequest(BaseModel):
@@ -52,11 +53,8 @@ async def upload_file(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Process PDF and index it (This would be async in production)
     try:
         chunks = rag_manager.process_pdf(file_path)
-        
-        # Create in-memory vector store for this session
         vector_store = rag_manager.create_vector_store(chunks)
         
         if vector_store:
@@ -68,45 +66,54 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+import sys
+
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     try:
-        # Get context from RAG
-        # If we have real Pinecone, we query it. 
-        # For now, we search the in-memory FAISS store
-        print("Request on /chat")
         context_docs = []
         if request.file_id is not None and request.file_id in sessions:
             current_file_id: str = request.file_id
             vector_store = sessions[current_file_id]
         elif "default" in sessions:
-            # Fallback to default session if available
             vector_store = sessions["default"]
         else:
             vector_store = None
             
         if vector_store:
-            # Retrieve top 5 relevant chunks
             context_docs = vector_store.similarity_search(request.message, k=5)
         
-        reply = await tutor.get_response(
-            chat_history=[], # Should parse from request.history
-            context_docs=context_docs,
-            user_query=request.message
+        # Convert request history to LangChain message objects
+        langchain_history = []
+        for msg in request.history:
+            if msg["role"] == "user":
+                langchain_history.append(HumanMessage(content=msg["content"]))
+            elif msg["role"] == "assistant":
+                langchain_history.append(AIMessage(content=msg["content"]))
+
+        return StreamingResponse(
+            tutor.get_streaming_response(
+                chat_history=langchain_history,
+                context_docs=context_docs,
+                user_query=request.message
+            ),
+            media_type="text/plain",
+            headers={
+                "X-Content-Type-Options": "nosniff",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
         )
-        return {"reply": reply}
     except Exception as e:
         print(f"Error in chat: {e}")
-        return {"reply": "Вибач, я не зміг обробити твоє запитання. Перевір API ключі."}
+        return {"reply": "Вибач, я не зміг обробити твоє запитання."}
 
 @app.on_event("startup")
 async def startup_event():
-    # Check for existing PDF in uploads to pre-load
     upload_dir = "uploads"
     cache_dir = "vector_store_cache"
     file_id = "default"
 
-    # Try loading from cache first
     if os.path.exists(cache_dir):
         print("Found cached vector store. Loading...")
         vector_store = rag_manager.load_index(cache_dir)
@@ -115,11 +122,9 @@ async def startup_event():
             print(f"SUCCESS: Successfully loaded cached vector store into session '{file_id}'")
             return
 
-    # If no cache, process existing PDF
     if os.path.exists(upload_dir):
         files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
         if files:
-            # Load the first found PDF
             file_path = os.path.join(upload_dir, files[0])
             print(f"Loading default PDF: {files[0]}")
             
@@ -129,8 +134,6 @@ async def startup_event():
                 if vector_store:
                     sessions[file_id] = vector_store
                     print(f"SUCCESS: Successfully loaded default PDF into session '{file_id}'")
-                    
-                    # Save to cache
                     rag_manager.save_index(vector_store, cache_dir)
                 else:
                     print("ERROR: Failed to create vector store for default PDF")

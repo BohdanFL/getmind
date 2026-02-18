@@ -30,7 +30,8 @@ class SocraticTutor:
         self.llm = ChatOllama(
             model=os.getenv("OLLAMA_MODEL", "gemma3n"),
             temperature=0.7,
-            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            streaming=True
         )
         self.system_message = SystemMessage(content=SOCRATIC_SYSTEM_PROMPT)
 
@@ -50,3 +51,21 @@ class SocraticTutor:
         
         response = await self.llm.ainvoke(messages)
         return response.content
+
+    async def get_streaming_response(self, chat_history, context_docs, user_query):
+        # Format context from RAG
+        context_text = "\n\n".join([doc.page_content for doc in context_docs])
+        print("Streaming response")
+        # Prepare messages
+        messages = [self.system_message]
+        
+        # Add chat history
+        messages.extend(chat_history)
+        
+        # Add current context and query
+        human_content = f"Context from material:\n{context_text}\n\nStudent question: {user_query}"
+        messages.append(HumanMessage(content=human_content))
+        
+        async for chunk in self.llm.astream(messages):
+            if chunk.content:
+                yield chunk.content

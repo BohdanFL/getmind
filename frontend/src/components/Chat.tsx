@@ -26,23 +26,51 @@ export default function Chat({ fileId }: ChatProps) {
     setInput("");
     setLoading(true);
 
+    // Initial assistant message for streaming
+    const assistantMsg: Message = { role: "assistant", content: "" };
+    setMessages(prev => [...prev, assistantMsg]);
+
     try {
-      console.log("Sending request to backend on /chat...");
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`, {
+      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`;
+      console.log(">>> [FRONTEND] Sending request to:", apiUrl);
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           message: input, 
-          history: messages,
-          file_id: fileId // Send fileId to backend
+          history: messages.slice(-10), // Send last 10 messages for context
+          file_id: fileId 
         })
       });
       
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
+      if (!response.body) throw new Error("No body in response");
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+      setLoading(false);
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value, { stream: true });
+        assistantContent += chunk;
+        
+        // Update the last message (the assistant's message) in real-time
+        setMessages(prev => {
+          const newMsgs = [...prev];
+          newMsgs[newMsgs.length - 1] = { role: "assistant", content: assistantContent };
+          return newMsgs;
+        });
+      }
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages(prev => [...prev, { role: "assistant", content: "Вибач, сталася помилка з'єднання." }]);
+      setMessages(prev => {
+        const newMsgs = [...prev];
+        newMsgs[newMsgs.length - 1] = { role: "assistant", content: "Вибач, сталася помилка з'єднання." };
+        return newMsgs;
+      });
     } finally {
       setLoading(false);
     }
@@ -58,7 +86,7 @@ export default function Chat({ fileId }: ChatProps) {
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, i) => (
+        {messages.map((msg, i) => (msg.content && (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] p-3 rounded-2xl ${
               msg.role === "user" 
@@ -72,7 +100,7 @@ export default function Chat({ fileId }: ChatProps) {
               </div>
             </div>
           </div>
-        ))}
+        )))}
         {loading && (
           <div className="flex justify-start">
              <div className="bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-700 italic text-sm">
@@ -80,6 +108,7 @@ export default function Chat({ fileId }: ChatProps) {
              </div>
           </div>
         )}
+        <div className="pb-4" /> {/* Extra space at the bottom of messages */}
       </div>
 
       <div className="p-4 bg-slate-800 border-t border-slate-700">
