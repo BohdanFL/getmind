@@ -5,3 +5,8 @@ venv
 .DS_Store
 dist
 .next
+project_description/
+backend/uploads/
+backend/vector_store_cache/
+.vercel
+*.log

@@ -1,6 +1,0 @@
-{
-	"nodes":[
-		{"id":"5ebd738a34058ee7","x":-400,"y":-560,"width":1220,"height":880,"type":"text","text":"#### Схема: Процес «Когнітивного чекпоінту» (Retrieval Practice)\n\n```mermaid\nsequenceDiagram\n    participant U as Учень (Frontend)\n    participant B as Backend (FastAPI)\n    participant DB as Vector DB (Pinecone)\n    participant AI as LLM (Gemini/LearnLM)\n\n    U->>B: Досягнуто кінця розділу/теми\n    B->>DB: Запит чанка тексту цього розділу\n    DB-->>B: Повернення контексту\n    B->>AI: Згенеруй відкрите питання для самоперевірки (на основі контексту)\n    AI-->>B: Питання\n    B-->>U: Блокування екрана + Показ питання\n    U->>B: Відповідь учня\n    B->>AI: Оціни відповідь (Semantic Grading) + Надай фідбек\n    AI-->>B: Оцінка (0.0 - 1.0) + Пояснення\n    B->>B: Оновлення параметрів FSRS (пам'ять)\n    B-->>U: Показ фідбека + Розблокування\n```\n\n"}
-	],
-	"edges":[]
-}
