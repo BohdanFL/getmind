@@ -50,10 +50,10 @@ class RAGManager:
         """Saves the vector store to disk."""
         try:
             vector_store.save_local(path)
-            print(f"✅ Vector store saved to {path}")
+            print(f"SUCCESS: Vector store saved to {path}")
             return True
         except Exception as e:
-            print(f"❌ Error saving vector store: {e}")
+            print(f"ERROR: Error saving vector store: {e}")
             return False
 
     def load_index(self, path: str):
@@ -64,8 +64,8 @@ class RAGManager:
                 self.embeddings, 
                 allow_dangerous_deserialization=True # Safe for local dev
             )
-            print(f"✅ Vector store loaded from {path}")
+            print(f"SUCCESS: Vector store loaded from {path}")
             return vector_store
         except Exception as e:
-            print(f"❌ Error loading vector store: {e}")
+            print(f"ERROR: Error loading vector store: {e}")
             return None

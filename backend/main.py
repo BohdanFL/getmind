@@ -110,7 +110,7 @@ async def startup_event():
         vector_store = rag_manager.load_index(cache_dir)
         if vector_store:
             sessions[file_id] = vector_store
-            print(f"✅ Successfully loaded cached vector store into session '{file_id}'")
+            print(f"SUCCESS: Successfully loaded cached vector store into session '{file_id}'")
             return
 
     # If no cache, process existing PDF
@@ -126,14 +126,14 @@ async def startup_event():
                 vector_store = rag_manager.create_vector_store(chunks)
                 if vector_store:
                     sessions[file_id] = vector_store
-                    print(f"✅ Successfully loaded default PDF into session '{file_id}'")
+                    print(f"SUCCESS: Successfully loaded default PDF into session '{file_id}'")
                     
                     # Save to cache
                     rag_manager.save_index(vector_store, cache_dir)
                 else:
-                    print("❌ Failed to create vector store for default PDF")
+                    print("ERROR: Failed to create vector store for default PDF")
             except Exception as e:
-                print(f"❌ Error loading default PDF: {e}")
+                print(f"ERROR: Error loading default PDF: {e}")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
