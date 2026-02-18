@@ -28,14 +28,37 @@ class RAGManager:
         chunks = text_splitter.split_documents(documents)
         return chunks
 
-    def create_vector_store(self, chunks):
-        """Creates an in-memory vector store for the session."""
+    def create_vector_store_incremental(self, chunks, progress_callback=None):
+        """Creates a vector store incrementally to report progress."""
+        if not chunks:
+            return None
+        
+        batch_size = 5 # Small batches for frequent updates
+        total_chunks = len(chunks)
+        
         try:
-            vector_store = FAISS.from_documents(chunks, self.embeddings)
+            # Create initial index with first batch
+            first_batch = chunks[:batch_size]
+            vector_store = FAISS.from_documents(first_batch, self.embeddings)
+            
+            if progress_callback:
+                progress_callback(min(batch_size, total_chunks), total_chunks)
+            
+            # Add remaining chunks in batches
+            for i in range(batch_size, total_chunks, batch_size):
+                batch = chunks[i : i + batch_size]
+                vector_store.add_documents(batch)
+                if progress_callback:
+                    progress_callback(min(i + batch_size, total_chunks), total_chunks)
+            
             return vector_store
         except Exception as e:
-            print(f"Error creating vector store: {e}")
+            print(f"Error creating vector store incrementally: {e}")
             return None
+
+    def create_vector_store(self, chunks):
+        """Creates an in-memory vector store for the session (Legacy wrapper)."""
+        return self.create_vector_store_incremental(chunks)
 
     def query(self, vector_store, query_text: str, k: int = 5):
         if not vector_store:

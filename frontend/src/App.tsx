@@ -1,9 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Chat from "./components/Chat";
 import PDFUpload from "./components/PDFUpload";
+import PdfViewer from "./components/PdfViewer";
 
 function App() {
   const [fileId, setFileId] = useState<string | null>(null);
+
+  // Check for existing (cached) session on mount
+  useEffect(() => {
+    const checkDefaultSession = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/upload/status/default`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === "completed") {
+            setFileId("default");
+          }
+        }
+      } catch (error) {
+        // Silently fail if no default session
+        console.log("No default session found on startup.");
+      }
+    };
+    checkDefaultSession();
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-8 flex flex-col font-sans">
@@ -23,16 +43,15 @@ function App() {
 
       <div className="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 min-h-[500px] mb-12">
         {/* Left Panel: Content / Upload */}
-        <div className="lg:col-span-7 flex flex-col space-y-4">
-          <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center p-6 min-h-[300px]">
-            {!fileId ? (
-              <PDFUpload onUploadSuccess={(id) => setFileId(id)} />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-500 italic">
-                PDF Viewer (Coming Soon) - File ID: {fileId}
-              </div>
-            )}
-          </div>
+        <div className="lg:col-span-7 flex flex-col space-y-4 h-[calc(100vh-250px)]">
+          {!fileId ? (
+            <div className="flex-1 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center p-6">
+               <PDFUpload onUploadSuccess={(id) => setFileId(id)} />
+            </div>
+          ) : (
+            <PdfViewer fileId={fileId} onReset={() => setFileId(null)} />
+          )}
+          
           <div className="h-32 bg-slate-900 border border-slate-800 rounded-xl p-4 shrink-0">
             <h4 className="text-xs uppercase tracking-widest text-slate-500 mb-2">Cognitive Progress</h4>
             <div className="w-full bg-slate-800 rounded-full h-2">
