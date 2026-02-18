@@ -14,12 +14,6 @@
 
 ## 🏗️ Technical Architecture & Build Process
 
-This project is a modern web application built with a focus on high performance and modularity. 
-
-**Requirements Compliance:**
-- ✅ **Web Application**: Full-stack application with a clear separation of concerns.
-- ✅ **Build Process**: The frontend utilizes **TypeScript** and **Vite**, requiring a mandatory build/compilation step (`npm run build`) to generate production-ready assets.
-
 ### Tech Stack
 - **Backend**: FastAPI (Python), LangChain, FAISS / Pinecone.
 - **Frontend**: React 19, Vite, TypeScript, Tailwind CSS.
