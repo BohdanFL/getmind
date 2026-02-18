@@ -25,6 +25,7 @@ export default function Chat({ fileId }: ChatProps) {
     setLoading(true);
 
     try {
+      console.log("Sending request to backend on /chat...");
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -34,6 +35,7 @@ export default function Chat({ fileId }: ChatProps) {
           file_id: fileId // Send fileId to backend
         })
       });
+      
       const data = await response.json();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
     } catch (error) {

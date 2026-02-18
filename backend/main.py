@@ -11,12 +11,12 @@ import uuid
 from app.rag import RAGManager
 from app.tutor import SocraticTutor
 
-app = FastAPI(title="CogniFlow API", description="AI-driven Socratic Tuturing Platform")
+app = FastAPI(title="GetMind API", description="AI-driven Socratic Tuturing Platform")
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -36,7 +36,7 @@ class ChatRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to CogniFlow API"}
+    return {"message": "Welcome to GetMind API"}
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -74,9 +74,11 @@ async def chat_endpoint(request: ChatRequest):
         # Get context from RAG
         # If we have real Pinecone, we query it. 
         # For now, we search the in-memory FAISS store
+        print("Request on /chat")
         context_docs = []
-        if request.file_id and request.file_id in sessions:
-            vector_store = sessions[request.file_id]
+        if request.file_id is not None and request.file_id in sessions:
+            file_id: str = request.file_id
+            vector_store = sessions[file_id]
         elif "default" in sessions:
             # Fallback to default session if available
             vector_store = sessions["default"]
