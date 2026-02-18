@@ -1,4 +1,6 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   role: "user" | "assistant";
@@ -11,7 +13,7 @@ interface ChatProps {
 
 export default function Chat({ fileId }: ChatProps) {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Вітаю! Я твій Сократівський тьютор. Що ми сьогодні будемо досліджувати?" }
+    { role: "assistant", content: "Вітаю! Я твій **Сократівський тьютор**. Що ми сьогодні будемо досліджувати?" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,16 +60,26 @@ export default function Chat({ fileId }: ChatProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] p-3 rounded-2xl ${
+            <div className={`max-w-[85%] p-3 rounded-2xl ${
               msg.role === "user" 
                 ? "bg-blue-600 text-white rounded-tr-none" 
-                : "bg-slate-700 text-slate-100 rounded-tl-none"
+                : "bg-slate-800 text-slate-100 border border-slate-700 rounded-tl-none"
             }`}>
-              {msg.content}
+              <div className="prose prose-invert prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {msg.content}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         ))}
-        {loading && <div className="text-slate-500 italic">Тьютор думає...</div>}
+        {loading && (
+          <div className="flex justify-start">
+             <div className="bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-700 italic text-sm">
+                Тьютор роздумує...
+             </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4 bg-slate-800 border-t border-slate-700">
@@ -76,7 +88,7 @@ export default function Chat({ fileId }: ChatProps) {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Запитай щось..."
             className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
