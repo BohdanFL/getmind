@@ -10,3 +10,5 @@ backend/uploads/
 backend/vector_store_cache/
 .vercel
 *.log
+*.sh
+*.bat
