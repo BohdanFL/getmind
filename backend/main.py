@@ -77,8 +77,8 @@ async def chat_endpoint(request: ChatRequest):
         print("Request on /chat")
         context_docs = []
         if request.file_id is not None and request.file_id in sessions:
-            file_id: str = request.file_id
-            vector_store = sessions[file_id]
+            current_file_id: str = request.file_id
+            vector_store = sessions[current_file_id]
         elif "default" in sessions:
             # Fallback to default session if available
             vector_store = sessions["default"]
