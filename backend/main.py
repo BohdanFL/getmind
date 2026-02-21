@@ -116,7 +116,7 @@ async def get_pdf(file_id: str):
             
     return StreamingResponse(open(file_path, "rb"), media_type="application/pdf")
 
-import sys
+
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):

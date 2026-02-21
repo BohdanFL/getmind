@@ -30,7 +30,7 @@ def test_initialization():
     # Test Tutor
     print("Testing SocraticTutor initialization (Gemini 2.5 Flash)...")
     try:
-        tutor = SocraticTutor()
+        _ = SocraticTutor()
         print("✅ SocraticTutor initialized successfully.")
     except Exception as e:
         print(f"❌ Failed to initialize SocraticTutor: {e}")
@@ -40,7 +40,7 @@ def test_initialization():
     # Test RAG
     print("Testing RAGManager initialization...")
     try:
-        rag = RAGManager()
+        _ = RAGManager()
         print("✅ RAGManager initialized successfully.")
     except Exception as e:
         print(f"❌ Failed to initialize RAGManager: {e}")
