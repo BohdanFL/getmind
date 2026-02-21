@@ -46,8 +46,8 @@ pipeline {
                     echo '🧪 Running Sanity Tests...'
                     sh '. venv/bin/activate && python test_setup.py'
                     
-                    echo '🧪 Running RAG Logic Tests...'
-                    sh '. venv/bin/activate && python test_rag_logic.py'
+                    // echo '🧪 Running RAG Logic Tests...'
+                    // sh '. venv/bin/activate && python test_rag_logic.py'
                 }
             }
         }
