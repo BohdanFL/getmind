@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import Chat from "./components/Chat";
 import PDFUpload from "./components/PDFUpload";
-import PdfViewer from "./components/PdfViewer";
+// import PdfViewer from "./components/PdfViewer";
+
 
 function App() {
   const [fileId, setFileId] = useState<string | null>(null);
@@ -19,7 +20,7 @@ function App() {
         }
       } catch (error) {
         // Silently fail if no default session
-        console.log("No default session found on startup.");
+        console.log("No default session found on startup.", error);
       }
     };
     checkDefaultSession();
