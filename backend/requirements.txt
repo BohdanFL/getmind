@@ -12,3 +12,5 @@ google-generativeai
 faiss-cpu
 langchain-ollama
 python-multipart
+ruff
+bandit

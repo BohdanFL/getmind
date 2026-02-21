@@ -12,3 +12,4 @@ backend/vector_store_cache/
 *.log
 *.sh
 *.bat
+*.pdf
