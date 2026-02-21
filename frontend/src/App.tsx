@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import Chat from "./components/Chat";
 import PDFUpload from "./components/PDFUpload";
-import PdfViewer from "./components/PdfViewer";
+// import PdfViewer from "./components/PdfViewer";
+
 
 
 function App() {
