@@ -4,6 +4,8 @@ pipeline {
     environment {
         PYTHON_VERSION = '3.10'
         NODE_VERSION = '18'
+        // Jenkins сам знайде IP Windows-хоста через шлюз за замовчуванням
+        OLLAMA_BASE_URL = "http://${sh(script: "ip route show | grep default | awk '{print \$3}'", returnStdout: true).trim()}:11434"
     }
 
     stages {
