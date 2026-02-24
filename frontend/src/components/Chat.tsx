@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Button } from "./ui/button";
 
 interface Message {
   role: "user" | "assistant";
@@ -121,13 +122,12 @@ export default function Chat({ fileId }: ChatProps) {
             placeholder="Запитай щось..."
             className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button
+          <Button
             onClick={sendMessage}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
             Надіслати
-          </button>
+          </Button>
         </div>
       </div>
     </div>
