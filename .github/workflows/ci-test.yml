@@ -1,0 +1,44 @@
+name: GitHub Actions Full Build Lab
+
+on:
+  push:
+    branches: [ lab-github-actions ]
+
+jobs:
+  # Робота для Бекенду (Python/FastAPI)
+  backend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          echo "Backend dependencies installed successfully"
+
+  # Робота для Фронтенду (React/Vite)
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install & Build Frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+          echo "Frontend build completed successfully"
