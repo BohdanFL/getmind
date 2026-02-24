@@ -1,6 +1,6 @@
 import os
 from langchain_ollama import ChatOllama
-from langchain.messages import SystemMessage, HumanMessage, AIMessage
+from langchain.messages import SystemMessage, HumanMessage
 from dotenv import load_dotenv
 
 load_dotenv()
