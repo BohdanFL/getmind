@@ -1,8 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 from langchain.messages import HumanMessage, AIMessage
 import uvicorn
 import shutil
@@ -29,6 +29,7 @@ tutor = SocraticTutor()
 
 # In-memory storage for simplicity in MVP
 sessions = {}
+processing_status: Dict[str, dict] = {}
 
 class ChatRequest(BaseModel):
     message: str
@@ -39,8 +40,35 @@ class ChatRequest(BaseModel):
 async def root():
     return {"message": "Welcome to GetMind API"}
 
+async def process_pdf_task(file_id: str, file_path: str):
+    try:
+        processing_status[file_id] = {"status": "loading", "progress": 10, "message": "Завантаження та аналіз PDF..."}
+        
+        chunks = rag_manager.process_pdf(file_path)
+        processing_status[file_id] = {"status": "chunking", "progress": 25, "message": "Розбиття тексту на блоки..."}
+        
+        def update_progress(current, total):
+            percent = 30 + int((current / total) * 65) # Scale from 30% to 95%
+            processing_status[file_id] = {
+                "status": "vectorizing", 
+                "progress": percent, 
+                "message": f"Створення семантичного індексу... ({current}/{total})"
+            }
+
+        vector_store = rag_manager.create_vector_store_incremental(chunks, progress_callback=update_progress)
+        
+        if vector_store:
+            sessions[file_id] = vector_store
+            processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово!"}
+        else:
+            processing_status[file_id] = {"status": "error", "progress": 0, "message": "Помилка створення векторної бази"}
+            
+    except Exception as e:
+        print(f"Error processing PDF task: {e}")
+        processing_status[file_id] = {"status": "error", "progress": 0, "message": f"Помилка: {str(e)}"}
+
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
     
@@ -53,18 +81,40 @@ async def upload_file(file: UploadFile = File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    try:
-        chunks = rag_manager.process_pdf(file_path)
-        vector_store = rag_manager.create_vector_store(chunks)
-        
-        if vector_store:
-            sessions[file_id] = vector_store
-            return {"file_id": file_id, "message": "File uploaded and processed"}
+    # Initialize status and start background task
+    processing_status[file_id] = {"status": "started", "progress": 0, "message": "Файл отримано..."}
+    background_tasks.add_task(process_pdf_task, file_id, file_path)
+    
+    return {"file_id": file_id, "message": "Processing started"}
+
+@app.get("/upload/status/{file_id}")
+async def get_upload_status(file_id: str):
+    if file_id not in processing_status:
+        # Check if it was already processed and exists in sessions
+        if file_id in sessions:
+            return {"status": "completed", "progress": 100, "message": "Готово!"}
+        raise HTTPException(status_code=404, detail="Processing status not found")
+    return processing_status[file_id]
+
+@app.get("/pdf/{file_id}")
+async def get_pdf(file_id: str):
+    file_path = os.path.join("uploads", f"{file_id}.pdf")
+    if not os.path.exists(file_path):
+        # Check if it's the "default" session, might map to actual file
+        if file_id == "default":
+            upload_dir = "uploads"
+            if os.path.exists(upload_dir):
+                files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
+                if files:
+                    file_path = os.path.join(upload_dir, files[0])
+                else:
+                    raise HTTPException(status_code=404, detail="Default PDF not found")
+            else:
+                 raise HTTPException(status_code=404, detail="Uploads directory not found")
         else:
-             raise HTTPException(status_code=500, detail="Failed to create vector store from PDF")
+            raise HTTPException(status_code=404, detail="File not found")
             
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return StreamingResponse(open(file_path, "rb"), media_type="application/pdf")
 
 import sys
 
@@ -115,12 +165,23 @@ async def startup_event():
     file_id = "default"
 
     if os.path.exists(cache_dir):
-        print("Found cached vector store. Loading...")
-        vector_store = rag_manager.load_index(cache_dir)
-        if vector_store:
-            sessions[file_id] = vector_store
-            print(f"SUCCESS: Successfully loaded cached vector store into session '{file_id}'")
-            return
+        # Only mark as completed if we actually have a PDF to show
+        pdf_exists = False
+        if os.path.exists(upload_dir):
+            files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
+            if files:
+                pdf_exists = True
+        
+        if pdf_exists:
+            print("Found cached vector store and PDF. Loading...")
+            vector_store = rag_manager.load_index(cache_dir)
+            if vector_store:
+                sessions[file_id] = vector_store
+                processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово (Cache)!"}
+                print(f"SUCCESS: Successfully loaded cached vector store into session '{file_id}'")
+                return
+        else:
+            print("Cache found but PDF missing. Skipping auto-load.")
 
     if os.path.exists(upload_dir):
         files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
@@ -130,9 +191,10 @@ async def startup_event():
             
             try:
                 chunks = rag_manager.process_pdf(file_path)
-                vector_store = rag_manager.create_vector_store(chunks)
+                vector_store = rag_manager.create_vector_store_incremental(chunks)
                 if vector_store:
                     sessions[file_id] = vector_store
+                    processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово (Default PDF)!"}
                     print(f"SUCCESS: Successfully loaded default PDF into session '{file_id}'")
                     rag_manager.save_index(vector_store, cache_dir)
                 else:
