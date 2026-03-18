@@ -10,7 +10,6 @@
 - **Socratic Tutor**: Instead of giving raw answers, the AI guides you through complex topics using structured questioning.
 - **Advanced RAG Pipeline**: Intelligent document indexing using PDF processing and vector search (FAISS/Pinecone).
 - **Interactive PDF Cockpit**: Upload documents and interact with them in real-time within a modern, responsive interface.
-- **Multi-Model Support**: Integrated with Google Gemini 2.0 and local Ollama models (Gemma 3).
 
 ## 🏗️ Technical Architecture & Build Process
 
@@ -18,7 +17,7 @@
 
 - **Backend**: FastAPI (Python), LangChain, FAISS / Pinecone.
 - **Frontend**: React 19, Vite, TypeScript, Tailwind CSS.
-- **AI Models**: Gemini 2.5 Flash, Ollama (Gemma 3).
+- **AI Models**: Gemini 3.1 Flash Lite Preview
 
 ## 🛠️ Project Structure
 

@@ -4,8 +4,14 @@ import json
 import os
 
 class AnalyticsManager:
-    def __init__(self, db_path: str = "usage.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # Set default path relative to this file (backend/app/analytics.py)
+            # We want it in the backend root: backend/usage.db
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.db_path = os.path.join(base_dir, "usage.db")
+        else:
+            self.db_path = db_path
         self._init_db()
 
     def _init_db(self):
@@ -59,7 +65,17 @@ class AnalyticsManager:
                   cached_tokens, total_tokens, cost, latency_ms, finish_reason, metadata_str))
             conn.commit()
             
-        print(f"[Analytics] Logged {operation_type}: {total_tokens} tokens, Cost: ${cost:.6f}, Latency: {latency_ms}ms")
+        # Enhanced Console Output
+        print("-" * 30)
+        print(f"📊 [Analytics] {operation_type.replace('_', ' ').title()}")
+        print(f"   Model:   {model_id}")
+        print(f"   Tokens:  {total_tokens:,} (In: {input_tokens:,}, Out: {output_tokens:,}, Cached: {cached_tokens:,})")
+        print(f"   Cost:    ${cost:.6f}")
+        if latency_ms:
+            print(f"   Latency: {latency_ms}ms")
+        if finish_reason:
+            print(f"   Status:  {finish_reason}")
+        print("-" * 30)
 
     def _calculate_cost(self, model_id: str, input_tokens: int, output_tokens: int, cached_tokens: int = 0) -> float:
         """

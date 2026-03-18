@@ -28,7 +28,7 @@ def test_initialization():
     print("-" * 30)
 
     # Test Tutor
-    print("Testing SocraticTutor initialization (Gemini 2.5 Flash)...")
+    print("Testing SocraticTutor initialization...")
     try:
         _ = SocraticTutor()
         print("✅ SocraticTutor initialized successfully.")
