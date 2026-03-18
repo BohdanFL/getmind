@@ -15,6 +15,7 @@
 ## 🏗️ Technical Architecture & Build Process
 
 ### Tech Stack
+
 - **Backend**: FastAPI (Python), LangChain, FAISS / Pinecone.
 - **Frontend**: React 19, Vite, TypeScript, Tailwind CSS.
 - **AI Models**: Gemini 2.5 Flash, Ollama (Gemma 3).
@@ -27,28 +28,32 @@
 ## 🚦 Getting Started
 
 ### Prerequisites
+
 - Python 3.10+
 - Node.js 18+
+- [pnpm](https://pnpm.io/) (package manager)
 - [Ollama](https://ollama.ai/) (Optional, for local models)
 
-### 1. Backend Setup
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp ../.env.example .env  # Configure your API keys
-python main.py
-```
+### Setup
 
-### 2. Frontend Setup
 ```bash
-cd frontend
-npm install
-npm run dev
+# 1. Create and activate Python virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 2. Install Python dependencies
+pip install -r backend/requirements.txt
+
+# 3. Configure environment variables
+cp .env.example .env  # Add your API keys
+
+# 4. Install JS dependencies and start dev server (frontend + backend)
+pnpm install
+pnpm dev
 ```
 
 ## 📅 Roadmap
+
 - [x] Core RAG pipeline integration.
 - [x] Socratic dialogue engine.
 - [ ] Real-time PDF viewer with annotation.
@@ -56,5 +61,5 @@ npm run dev
 - [ ] Multi-document synthesis mode.
 
 ---
-*Created with focus on cognitive science and AI excellence.*
 
+_Created with focus on cognitive science and AI excellence._
