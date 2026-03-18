@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { FileUp, Loader2 } from "lucide-react";
 
 interface ProcessingStatus {
   status: string;
@@ -59,44 +63,70 @@ export default function PDFUpload({ onUploadSuccess }: { onUploadSuccess: (fileI
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors w-full max-w-lg mx-auto">
-      {!loading ? (
-        <>
-          <div className="text-4xl mb-4 text-blue-400">📄</div>
-          <h3 className="text-xl font-semibold mb-2 text-white">Завантажте навчальні матеріали</h3>
-          <p className="text-slate-400 mb-6 text-center">PDF файли будуть проаналізовані для створення бази знань</p>
+    <div className="w-full h-full flex items-center justify-center p-4">
+      <Card className="w-full max-w-xl bg-slate-900/40 border-slate-800/50 border-2 border-dashed backdrop-blur-md rounded-3xl transition-all hover:border-neon-blue/40 group overflow-hidden">
+        <CardContent className="flex flex-col items-center justify-center p-12 text-center relative">
+          {/* Background Highlight */}
+          <div className="absolute inset-0 bg-neon-blue/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           
-          <label className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-all shadow-lg shadow-blue-900/20 active:scale-95">
-            Вибрати PDF
-            <input 
-              type="file" 
-              accept=".pdf" 
-              className="hidden" 
-              onChange={handleFileChange}
-            />
-          </label>
-        </>
-      ) : (
-        <div className="w-full space-y-6 py-4">
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h3 className="text-lg font-medium text-white">{progressStatus?.message || "Обробка..."}</h3>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>{progressStatus?.status === 'vectorizing' ? 'Ембединг моделі' : 'Обробка'}</span>
-              <span>{progressStatus?.progress}%</span>
+          {!loading ? (
+            <>
+              <div className="w-20 h-20 bg-neon-blue/10 rounded-2xl flex items-center justify-center mb-8 text-neon-blue shadow-lg shadow-neon-blue/5 group-hover:scale-110 transition-transform duration-500">
+                <FileUp size={40} />
+              </div>
+              <CardHeader className="p-0 mb-8 max-w-sm">
+                <CardTitle className="text-2xl font-black text-white mb-3 tracking-tight">
+                  NEURAL DATA INPUT
+                </CardTitle>
+                <CardDescription className="text-slate-400 font-medium leading-relaxed">
+                  Upload your PDF materials to synchronize them with the cognitive engine.
+                </CardDescription>
+              </CardHeader>
+              
+              <Button
+                asChild
+                className="bg-neon-blue hover:bg-neon-blue/80 text-white px-10 h-14 rounded-2xl transition-all shadow-xl shadow-neon-blue/20 font-bold tracking-widest text-xs"
+              >
+                <label className="cursor-pointer">
+                  SELECT PDF
+                  <input 
+                    type="file" 
+                    accept=".pdf" 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                  />
+                </label>
+              </Button>
+            </>
+          ) : (
+            <div className="w-full space-y-10 py-6 relative z-10">
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <Loader2 className="w-20 h-20 text-neon-blue animate-spin opacity-80" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                     <span className="text-xs font-black text-white font-mono">
+                       {progressStatus?.progress || 0}%
+                     </span>
+                  </div>
+                </div>
+                <h3 className="text-sm font-bold text-slate-300 mt-6 tracking-[0.2em] uppercase">
+                  {progressStatus?.message || "SYNCHRONIZING..."}
+                </h3>
+              </div>
+              
+              <div className="space-y-4 max-w-sm mx-auto w-full">
+                <div className="flex justify-between text-[10px] font-bold font-mono text-slate-500 uppercase tracking-widest">
+                  <span>
+                    {progressStatus?.status === 'vectorizing' ? 'VECTOR_INDEXING' : 'DATA_UPLOAD'}
+                  </span>
+                  <span className="text-neon-blue">{progressStatus?.progress || 0}%</span>
+                </div>
+                <Progress value={progressStatus?.progress || 0} className="h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800/30" />
+              </div>
             </div>
-            <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
-              <div 
-                className="bg-blue-500 h-full transition-all duration-500 ease-out shadow-[0_0_15px_rgba(59,130,246,0.5)]" 
-                style={{ width: `${progressStatus?.progress || 0}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

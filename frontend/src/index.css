@@ -1,20 +1,29 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";
+@plugin "tailwindcss-animate";
 
 @theme {
-  --color-slate-950: #020617;
-  --color-slate-100: #f1f5f9;
+  --color-slate-950: oklch(14.5% 0.01 273);
+  --color-slate-100: oklch(98.5% 0 0);
+  
+  /* Cyber-Neural Palette */
+  --color-cyber-emerald: oklch(75% 0.18 155);
+  --color-electric-violet: oklch(65% 0.25 290);
+  --color-neon-blue: oklch(70% 0.15 250);
 }
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-slate-950 text-slate-100 font-sans antialiased selection:bg-neon-blue/30;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
-  /* Custom Scrollbar */
+  /* Custom Scrollbar for Laboratory Feel */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -22,11 +31,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-800 rounded-full border-2 border-slate-950;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-700;
+    @apply bg-slate-800/50 rounded-full border-2 border-slate-950 hover:bg-slate-700 transition-colors;
   }
 }
 
@@ -38,22 +43,76 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+  
+  .glass-card {
+    @apply bg-slate-900/40 border border-slate-800/50 backdrop-blur-md shadow-2xl;
+  }
+  
+  .text-gradient {
+    @apply bg-gradient-to-br from-white via-slate-200 to-slate-500 bg-clip-text text-transparent;
+  }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
 
-@keyframes zoomIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+:root {
+  --radius: 0.75rem;
+  --background: oklch(14.5% 0.01 273);
+  --foreground: oklch(98.5% 0 0);
+  
+  --card: oklch(16.5% 0.015 273);
+  --card-foreground: oklch(98.5% 0 0);
+  
+  --popover: oklch(16.5% 0.015 273);
+  --popover-foreground: oklch(98.5% 0 0);
+  
+  --primary: oklch(65% 0.2 250);
+  --primary-foreground: oklch(98.5% 0 0);
+  
+  --secondary: oklch(22% 0.02 273);
+  --secondary-foreground: oklch(98.5% 0 0);
+  
+  --muted: oklch(22% 0.02 273);
+  --muted-foreground: oklch(60% 0.01 273);
+  
+  --accent: oklch(25% 0.03 273);
+  --accent-foreground: oklch(98.5% 0 0);
+  
+  --destructive: oklch(60% 0.2 20);
+  --destructive-foreground: oklch(98.5% 0 0);
+  
+  --border: oklch(22% 0.02 273 / 0.5);
+  --input: oklch(22% 0.02 273);
+  --ring: oklch(65% 0.2 250 / 0.3);
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out;
-}
-
-.animate-zoom-in {
-  animation: zoomIn 0.3s ease-out;
+.dark {
+  --background: oklch(12% 0.01 273);
+  --foreground: oklch(98.5% 0 0);
+  --card: oklch(14% 0.015 273);
+  --border: oklch(20% 0.02 273 / 0.3);
 }

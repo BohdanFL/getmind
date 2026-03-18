@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, RotateCcw, Loader2 } from "lucide-react";
 
 // Set up worker for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -29,101 +34,126 @@ const PdfViewer = ({ fileId, onReset }: PdfViewerProps) => {
     const zoomOut = () => setScale(prev => Math.max(prev - 0.2, 0.5));
 
     return (
-        <div className="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden relative">
-            {/* Toolbar */}
-            <div className="bg-slate-800 border-b border-slate-700 p-3 flex items-center justify-between z-10">
-                <div className="flex items-center space-x-4">
-                    <button 
+        <Card className="flex-1 flex flex-col bg-slate-950/20 border-slate-800/40 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl relative">
+            {/* Context Header for the viewer */}
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-blue/20 to-transparent z-20" />
+            
+            <div className="bg-slate-900/40 border-b border-slate-800/50 p-2.5 flex items-center justify-between z-10 backdrop-blur-xl">
+                <div className="flex items-center space-x-3">
+                    <Button 
+                        variant="ghost" 
+                        size="icon"
                         onClick={onReset}
-                        className="text-slate-400 hover:text-white transition-colors"
-                        title="Завантажити інший файл"
+                        className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
+                        title="Upload new document"
                     >
-                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                        </svg>
-                    </button>
-                    <div className="h-4 w-[1px] bg-slate-700"></div>
-                    <div className="flex items-center space-x-2">
-                         <button 
+                         <RotateCcw size={16} />
+                    </Button>
+                    <Separator orientation="vertical" className="h-4 bg-slate-800/50" />
+                    <div className="flex items-center space-x-1 bg-slate-950/40 rounded-lg px-1 border border-slate-800/30">
+                         <Button 
+                            variant="ghost"
+                            size="icon"
                             disabled={pageNumber <= 1}
                             onClick={goToPrevPage}
-                            className="p-1 hover:bg-slate-700 rounded disabled:opacity-30 transition-colors"
+                            className="h-7 w-7 text-slate-400 hover:text-neon-blue hover:bg-transparent disabled:opacity-30"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                        <span className="text-xs font-mono text-slate-300 min-w-[60px] text-center">
-                            {pageNumber} / {numPages || '--'}
+                            <ChevronLeft size={16} />
+                        </Button>
+                        <span className="text-[10px] font-mono font-bold text-slate-400 min-w-[60px] text-center tracking-tighter">
+                            PAGE {pageNumber} <span className="text-slate-600">/</span> {numPages || '--'}
                         </span>
-                        <button 
+                        <Button 
+                            variant="ghost"
+                            size="icon"
                             disabled={pageNumber >= (numPages || 1)}
                             onClick={goToNextPage}
-                            className="p-1 hover:bg-slate-700 rounded disabled:opacity-30 transition-colors"
+                            className="h-7 w-7 text-slate-400 hover:text-neon-blue hover:bg-transparent disabled:opacity-30"
                         >
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                            </svg>
-                        </button>
+                             <ChevronRight size={16} />
+                        </Button>
                     </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    <button onClick={zoomOut} className="p-1 hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                        </svg>
-                    </button>
-                    <span className="text-[10px] font-mono text-slate-500 w-10 text-center">
-                        {Math.round(scale * 100)}%
-                    </span>
-                    <button onClick={zoomIn} className="p-1 hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                        </svg>
-                    </button>
-                    <div className="h-4 w-[1px] bg-slate-700 mx-1"></div>
-                    <a 
-                        href={pdfUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-1 hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-white"
-                        title="Зберегти PDF"
+                    <div className="flex items-center space-x-1 bg-slate-950/40 rounded-lg px-1 border border-slate-800/30">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={zoomOut} 
+                            className="h-7 w-7 text-slate-400 hover:text-neon-blue hover:bg-transparent"
+                        >
+                            <ZoomOut size={16} />
+                        </Button>
+                        <span className="text-[9px] font-mono font-bold text-slate-500 w-10 text-center tracking-tighter">
+                            {Math.round(scale * 100)}%
+                        </span>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={zoomIn} 
+                            className="h-7 w-7 text-slate-400 hover:text-neon-blue hover:bg-transparent"
+                        >
+                            <ZoomIn size={16} />
+                        </Button>
+                    </div>
+                    <Separator orientation="vertical" className="h-4 bg-slate-800/50" />
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        asChild
+                        className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                    </a>
+                        <a 
+                            href={pdfUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            title="Save document"
+                        >
+                            <Download size={16} />
+                        </a>
+                    </Button>
                 </div>
             </div>
 
-            {/* Viewer Area */}
-            <div className="flex-1 overflow-auto p-4 flex justify-center bg-slate-950 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                <Document
-                    file={pdfUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    loading={
-                        <div className="flex flex-col items-center justify-center p-20 text-slate-500">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
-                            <p className="text-sm font-medium">Підготовка документа...</p>
+            <ScrollArea className="flex-1 bg-slate-950/40 p-6">
+                <div className="flex justify-center min-w-min mx-auto">
+                    {pdfUrl ? (
+                         <div className="relative shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-sm overflow-hidden border border-slate-800/50">
+                            <Document
+                                file={pdfUrl}
+                                onLoadSuccess={onDocumentLoadSuccess}
+                                loading={
+                                    <div className="flex flex-col items-center justify-center p-20 space-y-4">
+                                        <Loader2 className="w-10 h-10 text-neon-blue animate-spin" />
+                                        <p className="text-[10px] font-mono font-bold text-slate-500 tracking-[0.2em]">INITIALIZING_READER...</p>
+                                    </div>
+                                }
+                                error={
+                                    <div className="p-10 text-rose-400 text-center bg-rose-500/5 rounded-xl border border-rose-500/20">
+                                        Failed to decode neural data stream.
+                                    </div>
+                                }
+                            >
+                                <Page 
+                                    pageNumber={pageNumber} 
+                                    scale={scale}
+                                    renderTextLayer={true}
+                                    renderAnnotationLayer={true}
+                                />
+                            </Document>
+                         </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-4">
+                             <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center">
+                                <RotateCcw className="animate-spin-slow" />
+                             </div>
+                             <p className="text-[10px] font-mono tracking-widest uppercase">Waiting for document stream...</p>
                         </div>
-                    }
-                    error={
-                        <div className="text-red-400 text-sm p-10 text-center">
-                            Помилка завантаження PDF. Спробуйте оновити сторінку.
-                        </div>
-                    }
-                >
-                    <Page 
-                        pageNumber={pageNumber} 
-                        scale={scale} 
-                        className="shadow-2xl shadow-black ring-1 ring-slate-800"
-                        renderTextLayer={true}
-                        renderAnnotationLayer={true}
-                    />
-                </Document>
-            </div>
-        </div>
+                    )}
+                </div>
+            </ScrollArea>
+        </Card>
     );
 };
 

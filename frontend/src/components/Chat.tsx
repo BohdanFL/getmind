@@ -1,6 +1,12 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -17,6 +23,16 @@ export default function Chat({ fileId }: ChatProps) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -26,19 +42,17 @@ export default function Chat({ fileId }: ChatProps) {
     setInput("");
     setLoading(true);
 
-    // Initial assistant message for streaming
     const assistantMsg: Message = { role: "assistant", content: "" };
     setMessages(prev => [...prev, assistantMsg]);
 
     try {
       const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`;
-      console.log(">>> [FRONTEND] Sending request to:", apiUrl);
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           message: input, 
-          history: messages.slice(-10), // Send last 10 messages for context
+          history: messages.slice(-10),
           file_id: fileId 
         })
       });
@@ -57,7 +71,6 @@ export default function Chat({ fileId }: ChatProps) {
         const chunk = decoder.decode(value, { stream: true });
         assistantContent += chunk;
         
-        // Update the last message (the assistant's message) in real-time
         setMessages(prev => {
           const newMsgs = [...prev];
           newMsgs[newMsgs.length - 1] = { role: "assistant", content: assistantContent };
@@ -77,59 +90,69 @@ export default function Chat({ fileId }: ChatProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 text-white rounded-lg shadow-xl overflow-hidden border border-slate-700">
-      <div className="p-4 border-b border-slate-700 bg-slate-800">
-        <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-          Socratic Tutor
-        </h2>
-        {fileId && <span className="text-xs text-emerald-400">Context Active ({fileId.slice(0,4)}...)</span>}
-      </div>
+    <Card className="flex flex-col h-full bg-slate-900/40 border-slate-800/50 backdrop-blur-md shadow-2xl overflow-hidden text-slate-100 rounded-3xl">
+      <CardHeader className="py-4 border-b border-slate-800/50 bg-slate-900/20">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-bold tracking-tight text-white flex items-center">
+            <span className="w-1.5 h-1.5 rounded-full bg-neon-blue mr-2 shadow-[0_0_8px_var(--color-neon-blue)]" />
+            COGNITIVE ASSISTANT
+          </CardTitle>
+          {fileId && (
+            <Badge variant="outline" className="border-cyber-emerald/30 text-cyber-emerald bg-cyber-emerald/10 text-[10px] font-mono">
+              CONTEXT: ON
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, i) => (msg.content && (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] p-3 rounded-2xl ${
-              msg.role === "user" 
-                ? "bg-blue-600 text-white rounded-tr-none" 
-                : "bg-slate-800 text-slate-100 border border-slate-700 rounded-tl-none"
-            }`}>
-              <div className="prose prose-invert prose-sm max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {msg.content}
-                </ReactMarkdown>
+      <CardContent className="flex-1 p-0 overflow-hidden relative bg-slate-950/20">
+        <ScrollArea ref={scrollRef} className="h-full p-4">
+          <div className="space-y-6">
+            {messages.map((msg, i) => (msg.content && (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[90%] p-4 rounded-2xl ${
+                  msg.role === "user" 
+                    ? "bg-neon-blue/80 text-white rounded-tr-none shadow-lg shadow-neon-blue/20" 
+                    : "bg-slate-900/60 text-slate-100 border border-slate-800/50 rounded-tl-none"
+                }`}>
+                  <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-slate-950/50">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                </div>
               </div>
-            </div>
+            )))}
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-slate-900/40 text-slate-500 p-4 rounded-2xl rounded-tl-none border border-slate-800/50 italic text-xs animate-pulse font-mono tracking-tight">
+                  NEURAL_PROCESSING_...
+                </div>
+              </div>
+            )}
+            <div className="h-4" />
           </div>
-        )))}
-        {loading && (
-          <div className="flex justify-start">
-             <div className="bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-700 italic text-sm">
-                Тьютор роздумує...
-             </div>
-          </div>
-        )}
-        <div className="pb-4" /> {/* Extra space at the bottom of messages */}
-      </div>
+        </ScrollArea>
+      </CardContent>
 
-      <div className="p-4 bg-slate-800 border-t border-slate-700">
-        <div className="flex space-x-2">
-          <input
-            type="text"
+      <CardFooter className="p-4 bg-slate-900/20 border-t border-slate-800/50">
+        <div className="flex w-full space-x-2">
+          <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Запитай щось..."
-            className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ask anything..."
+            className="flex-1 bg-slate-950/40 border-slate-800/80 focus-visible:ring-neon-blue text-xs h-10"
           />
-          <button
+          <Button
             onClick={sendMessage}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            className="bg-neon-blue hover:bg-neon-blue/80 text-white shadow-lg shadow-neon-blue/10 h-10 px-6 font-bold text-xs"
           >
-            Надіслати
-          </button>
+            {loading ? <Loader2 className="animate-spin" /> : "SEND"}
+          </Button>
         </div>
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
   );
 }
