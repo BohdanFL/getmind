@@ -10,7 +10,7 @@ import os
 import uuid
 
 # Import our custom modules
-from app.rag import RAGManager
+from app.pdf_manager import PDFManager
 from app.tutor import SocraticTutor
 
 app = FastAPI(title="GetMind API", description="AI-driven Socratic Tuturing Platform")
@@ -24,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-rag_manager = RAGManager()
+pdf_manager = PDFManager()
 tutor = SocraticTutor()
 
 # In-memory storage for simplicity in MVP
@@ -40,28 +40,17 @@ class ChatRequest(BaseModel):
 async def root():
     return {"message": "Welcome to GetMind API"}
 
-async def process_pdf_task(file_id: str, file_path: str):
+def process_pdf_task(file_id: str, file_path: str):
     try:
-        processing_status[file_id] = {"status": "loading", "progress": 10, "message": "Завантаження та аналіз PDF..."}
+        processing_status[file_id] = {"status": "loading", "progress": 20, "message": "Завантаження до Google GenAI..."}
         
-        chunks = rag_manager.process_pdf(file_path)
-        processing_status[file_id] = {"status": "chunking", "progress": 25, "message": "Розбиття тексту на блоки..."}
+        file_name = pdf_manager.upload_pdf(file_path, display_name=f"Document {file_id}")
         
-        def update_progress(current, total):
-            percent = 30 + int((current / total) * 65) # Scale from 30% to 95%
-            processing_status[file_id] = {
-                "status": "vectorizing", 
-                "progress": percent, 
-                "message": f"Створення семантичного індексу... ({current}/{total})"
-            }
-
-        vector_store = rag_manager.create_vector_store_incremental(chunks, progress_callback=update_progress)
-        
-        if vector_store:
-            sessions[file_id] = vector_store
+        if file_name:
+            sessions[file_id] = file_name
             processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово!"}
         else:
-            processing_status[file_id] = {"status": "error", "progress": 0, "message": "Помилка створення векторної бази"}
+            processing_status[file_id] = {"status": "error", "progress": 0, "message": "Помилка завантаження файлу в Gemini AI"}
             
     except Exception as e:
         print(f"Error processing PDF task: {e}")
@@ -121,30 +110,18 @@ async def get_pdf(file_id: str):
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     try:
-        context_docs = []
+        file_name = None
         if request.file_id is not None and request.file_id in sessions:
-            current_file_id: str = request.file_id
-            vector_store = sessions[current_file_id]
+            file_name = sessions[request.file_id]
         elif "default" in sessions:
-            vector_store = sessions["default"]
-        else:
-            vector_store = None
+            file_name = sessions["default"]
             
-        if vector_store:
-            context_docs = vector_store.similarity_search(request.message, k=5)
-        
-        # Convert request history to LangChain message objects
-        langchain_history = []
-        for msg in request.history:
-            if msg["role"] == "user":
-                langchain_history.append(HumanMessage(content=msg["content"]))
-            elif msg["role"] == "assistant":
-                langchain_history.append(AIMessage(content=msg["content"]))
-
+        # We no longer send LangChain messages, we'll let tutor handle the raw format
+        # or we just pass the raw dict to the new native tutor implementation.
         return StreamingResponse(
             tutor.get_streaming_response(
-                chat_history=langchain_history,
-                context_docs=context_docs,
+                chat_history=request.history,
+                file_name=file_name,
                 user_query=request.message
             ),
             media_type="text/plain",
@@ -161,27 +138,7 @@ async def chat_endpoint(request: ChatRequest):
 @app.on_event("startup")
 async def startup_event():
     upload_dir = "uploads"
-    cache_dir = "vector_store_cache"
     file_id = "default"
-
-    if os.path.exists(cache_dir):
-        # Only mark as completed if we actually have a PDF to show
-        pdf_exists = False
-        if os.path.exists(upload_dir):
-            files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
-            if files:
-                pdf_exists = True
-        
-        if pdf_exists:
-            print("Found cached vector store and PDF. Loading...")
-            vector_store = rag_manager.load_index(cache_dir)
-            if vector_store:
-                sessions[file_id] = vector_store
-                processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово (Cache)!"}
-                print(f"SUCCESS: Successfully loaded cached vector store into session '{file_id}'")
-                return
-        else:
-            print("Cache found but PDF missing. Skipping auto-load.")
 
     if os.path.exists(upload_dir):
         files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
@@ -190,15 +147,14 @@ async def startup_event():
             print(f"Loading default PDF: {files[0]}")
             
             try:
-                chunks = rag_manager.process_pdf(file_path)
-                vector_store = rag_manager.create_vector_store_incremental(chunks)
-                if vector_store:
-                    sessions[file_id] = vector_store
+                # Upload to Google on startup to prime the cache
+                file_name = pdf_manager.upload_pdf(file_path, display_name="Default PDF")
+                if file_name:
+                    sessions[file_id] = file_name
                     processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово (Default PDF)!"}
                     print(f"SUCCESS: Successfully loaded default PDF into session '{file_id}'")
-                    rag_manager.save_index(vector_store, cache_dir)
                 else:
-                    print("ERROR: Failed to create vector store for default PDF")
+                    print("ERROR: Failed to upload default PDF to Gemini")
             except Exception as e:
                 print(f"ERROR: Error loading default PDF: {e}")
 

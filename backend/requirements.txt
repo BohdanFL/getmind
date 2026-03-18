@@ -9,8 +9,7 @@ python-dotenv
 pydantic
 pydantic-settings
 google-generativeai
-faiss-cpu
-langchain-ollama
+google-genai
 python-multipart
 ruff
 bandit
