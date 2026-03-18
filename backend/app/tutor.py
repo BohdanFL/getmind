@@ -1,4 +1,5 @@
 import os
+import time
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -28,7 +29,7 @@ Response language: Ukrainian (unless asked otherwise). Stay encouraging and pati
 class SocraticTutor:
     def __init__(self):
         # Gemini 3.1 Flash-Lite: Best price/performance ratio for chat
-        self.model_id = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+        self.model_id = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
         
         # Native GenAI Client
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -40,8 +41,6 @@ class SocraticTutor:
         print("Streaming response natively from Gemini")
         
         # 1. Format Chat History into a single string to maintain context
-        # (Alternatively, could construct types.Content objects for robust role playing, 
-        # but string formatting works perfectly for simple RAG context keeping)
         history_text = ""
         if chat_history:
             for msg in chat_history:
@@ -70,6 +69,7 @@ class SocraticTutor:
             request_contents.append(prompt)
             
             # 4. Stream response
+            start_time = time.time()
             response_stream = await self.client.aio.models.generate_content_stream(
                 model=self.model_id,
                 contents=request_contents,
@@ -79,9 +79,40 @@ class SocraticTutor:
                 )
             )
             
+            last_usage = None
+            finish_reason = None
+
             async for chunk in response_stream:
+                # Capture usage metadata if available (usually in the last chunk)
+                if chunk.usage_metadata:
+                    last_usage = chunk.usage_metadata
+                
+                # Capture finish reason if available
+                if chunk.candidates and chunk.candidates[0].finish_reason:
+                    finish_reason = str(chunk.candidates[0].finish_reason)
+
                 if chunk.text:
                     yield chunk.text
+
+            end_time = time.time()
+            latency_ms = int((end_time - start_time) * 1000)
+
+            # 5. Log usage after stream completes
+            if last_usage:
+                from .analytics import analytics
+                analytics.log_usage(
+                    operation_type="chat_completion",
+                    model_id=self.model_id,
+                    input_tokens=last_usage.prompt_token_count,
+                    output_tokens=last_usage.candidates_token_count,
+                    cached_tokens=getattr(last_usage, 'cached_content_token_count', 0),
+                    latency_ms=latency_ms,
+                    finish_reason=finish_reason,
+                    extra_metadata={
+                        "user_query_len": len(user_query),
+                        "file_context": file_name
+                    }
+                )
                     
         except Exception as e:
             print(f"Native SDK Generation Error: {e}")
