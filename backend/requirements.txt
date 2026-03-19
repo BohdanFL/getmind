@@ -1,8 +1,5 @@
 fastapi
 uvicorn
-langchain
-langchain-community
-langchain-google-genai
 pinecone-client
 pypdf
 python-dotenv
@@ -13,3 +10,7 @@ google-genai
 python-multipart
 ruff
 bandit
+pytest
+pytest-asyncio
+httpx
+pytest-mock
