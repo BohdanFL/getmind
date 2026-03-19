@@ -4,6 +4,8 @@ import asyncio
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from typing import List, Optional, Type, Any
 
 load_dotenv()
 
@@ -223,3 +225,53 @@ class SocraticTutor:
 
 
         return "fail", "Вибач, я не зміг обробити твоє запитання. Спробуй, будь ласка, ще раз через хвилину."
+
+    async def get_structured_response(self, prompt: str, response_schema: type[BaseModel]) -> BaseModel:
+        """
+        Generates a non-streaming structured response matching the provided Pydantic schema.
+        """
+        print(f"Generating structured response using schema: {response_schema.__name__}")
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model_id,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.system_instruction,
+                    response_mime_type="application/json",
+                    response_json_schema=response_schema.model_json_schema(),
+                    temperature=0.7
+                )
+            )
+            
+            # Note: Analytics logging could be added here similar to get_streaming_response
+            return response_schema.model_validate_json(response.text)
+            
+        except Exception as e:
+            print(f"Structured Generation Error: {e}")
+            raise e
+
+    async def get_streaming_structured_response(self, prompt: str, response_schema: type[BaseModel]):
+        """
+        Generates a streaming structured response. 
+        Yields partial JSON strings that eventually form a valid JSON object matching the schema.
+        """
+        print(f"Streaming structured response using schema: {response_schema.__name__}")
+        try:
+            response_stream = await self.client.aio.models.generate_content_stream(
+                model=self.model_id,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.system_instruction,
+                    response_mime_type="application/json",
+                    response_json_schema=response_schema.model_json_schema(),
+                    temperature=0.7
+                )
+            )
+            
+            async for chunk in response_stream:
+                if chunk.text:
+                    yield chunk.text
+                    
+        except Exception as e:
+            print(f"Streaming Structured Generation Error: {e}")
+            raise e
