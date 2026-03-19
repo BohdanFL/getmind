@@ -166,7 +166,7 @@ class SocraticTutor:
                     # 5. Log usage after success
                     if last_usage:
                         from .analytics import analytics
-                        analytics.log_usage(
+                        await analytics.log_usage_async(
                             operation_type="chat_completion",
                             model_id=self.model_id,
                             input_tokens=last_usage.prompt_token_count,
@@ -183,29 +183,43 @@ class SocraticTutor:
                     return # Exit the method on success
 
                 except Exception as e:
-                    err_msg = str(e)
-                    is_quota_error = "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
-                    is_connection_error = any(msg in err_msg.lower() for msg in ["connection", "timeout", "transfer", "reset"])
-                    print(f"Error: {err_msg}")
-                    # if tokens_yielded > 0:
-                    #     print(f"Stream interrupted after {tokens_yielded} tokens: {err_msg}")
-                    #     yield "\n\n[Зв'язок перервано під час генерації.]"
-                    #     return
-                    
-                    if is_quota_error:
-                        delay = self._parse_quota_error(err_msg)
-                        yield f"\n\n**Ліміт запитів вичерпано.** \nБудь ласка, зачекай **{delay}** перед наступним запитанням."
-                        return # Stop trying for 429 errors
-
-                    if attempt < max_retries - 1 and is_connection_error:
-                        print(f"Stream attempt {attempt + 1} failed: {err_msg}. Retrying in 1s...")
-                        await asyncio.sleep(1) # Small delay before retry
+                    action, message = self._classify_error(e, tokens_yielded, attempt, max_retries)
+                    if message:
+                        yield message
+                    if action == "stop":
+                        return
+                    if action == "retry":
+                        await asyncio.sleep(1)
                         continue
-                    else:
-                        print(f"Native SDK Generation Error: {err_msg}")
-                        yield "Вибач, я не зміг обробити твоє запитання. Спробуй, будь ласка, ще раз через хвилину."
-                        break
+                    break # action == "fail" or unknown
                     
         except Exception as e:
             print(f"Native SDK Generation Error: {e}")
             yield "Вибач, я не зміг обробити твоє запитання. Перевір підключення до API Google."
+
+    def _classify_error(self, error: Exception, tokens_yielded: int, attempt: int, max_retries: int) -> tuple[str, str | None]:
+        """
+        Categorizes an error and determines the appropriate action for the streaming loop.
+        Returns: (action, user_message)
+        Actions: 'retry', 'stop', 'fail'
+        """
+        err_msg = str(error)
+        print(f"Generation Error (attempt {attempt + 1}): {err_msg}")
+
+        # Stream interrupted after generating some text
+        if tokens_yielded > 0:
+            return "stop", "\n\n[Зв'язок перервано під час генерації.]"
+
+        # Quota Issues (429)
+        if "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
+            delay = self._parse_quota_error(err_msg)
+            msg = f"\n\n**Ліміт запитів вичерпано.** \nБудь ласка, зачекай **{delay}** перед наступним запитанням."
+            return "stop", msg
+
+        # Connection Issues - eligible for retry
+        is_connection = any(msg in err_msg.lower() for msg in ["connection", "timeout", "transfer", "reset"])
+        if is_connection and attempt < max_retries - 1:
+            return "retry", None
+
+
+        return "fail", "Вибач, я не зміг обробити твоє запитання. Спробуй, будь ласка, ще раз через хвилину."

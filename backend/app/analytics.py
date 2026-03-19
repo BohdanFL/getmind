@@ -2,6 +2,7 @@ import sqlite3
 import datetime
 import json
 import os
+import asyncio
 
 class AnalyticsManager:
     def __init__(self, db_path: str = None):
@@ -80,7 +81,14 @@ class AnalyticsManager:
             print(f"   Status:  {finish_reason}")
         print("-" * 30)
 
-    def _calculate_cost(self, model_id: str, input_tokens: int, output_tokens: int, cached_tokens: int = 0) -> float:
+    async def log_usage_async(self, *args, **kwargs):
+        """
+        Asynchronously logs usage by running the synchronous log_usage in a separate thread.
+        This prevents blocking the main event loop during database I/O.
+        """
+        return await asyncio.to_thread(self.log_usage, *args, **kwargs)
+
+    def _calculate_cost(self, input_tokens: int, output_tokens: int, cached_tokens: int = 0) -> float:
         """
         Calculates the estimated cost in USD based on model pricing.
         Baseline: Gemini 3.1 Flash-Lite PREVIEW (pricing as of early 2026)
@@ -129,5 +137,5 @@ class AnalyticsManager:
             """)
             return cursor.fetchall()
 
-# Global instance for easy access
+
 analytics = AnalyticsManager()
