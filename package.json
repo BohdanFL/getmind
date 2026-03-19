@@ -2,9 +2,9 @@
     "name": "getmind",
     "private": true,
     "scripts": {
-        "dev": "concurrently --kill-others -n \"FE,BE\" -c \"blue,green\" \"pnpm run dev:fe\" \"pnpm run dev:be\"",
+        "dev": "concurrently --kill-others -n \"BE,FE\" -c \"green,blue\" \"pnpm run dev:be\" \"pnpm run dev:fe\" ",
         "dev:fe": "cd frontend && pnpm dev",
-        "dev:be": "cd backend && ..\\.venv\\Scripts\\python main.py",
+        "dev:be": "cd backend && ..\\.venv\\Scripts\\python -u main.py",
         "kill": "taskkill /IM python.exe /F || exit 0",
         "clean-dev": "pnpm run kill && pnpm run dev"
     },

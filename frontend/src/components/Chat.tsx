@@ -62,10 +62,16 @@ export default function Chat({ fileId }: ChatProps) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantContent = "";
-      setLoading(false);
+      let started = false;
       
       while (true) {
         const { done, value } = await reader.read();
+        
+        if (!started) {
+          started = true;
+          setLoading(false);
+        }
+
         if (done) break;
         
         const chunk = decoder.decode(value, { stream: true });

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from langchain.messages import HumanMessage, AIMessage
@@ -13,7 +14,43 @@ import uuid
 from app.pdf_manager import PDFManager
 from app.tutor import SocraticTutor
 
-app = FastAPI(title="GetMind API", description="AI-driven Socratic Tuturing Platform")
+# # Вимикає деякі проблеми з проксі/сертифікатами, які часто тригерять 10054 на Win
+# os.environ["CURL_CA_BUNDLE"] = "" 
+# # Якщо використовуєте gRPC (старі версії SDK), це допомагає:
+# os.environ["GRPC_DNS_RESOLVER"] = "native"
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    upload_dir = "uploads"
+    file_id = "default"
+
+    if os.path.exists(upload_dir):
+        files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
+        if files:
+            file_path = os.path.join(upload_dir, files[0])
+            print(f"Loading default PDF: {files[0]}")
+            
+            try:
+                # Upload to Google on startup to prime the cache
+                file_name = pdf_manager.upload_pdf(file_path, display_name="Default PDF")
+                if file_name:
+                    sessions[file_id] = file_name
+                    processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово (Default PDF)!"}
+                    print(f"SUCCESS: Successfully loaded default PDF into session '{file_id}'")
+                else:
+                    print("ERROR: Failed to upload default PDF to Gemini")
+            except Exception as e:
+                print(f"ERROR: Error loading default PDF: {e}")
+    
+    yield
+    # Shutdown logic (if any) can go here
+
+app = FastAPI(
+    title="GetMind API", 
+    description="AI-driven Socratic Tuturing Platform",
+    lifespan=lifespan
+)
 
 # Configure CORS
 app.add_middleware(
@@ -135,28 +172,7 @@ async def chat_endpoint(request: ChatRequest):
         print(f"Error in chat: {e}")
         return {"reply": "Вибач, я не зміг обробити твоє запитання."}
 
-@app.on_event("startup")
-async def startup_event():
-    upload_dir = "uploads"
-    file_id = "default"
-
-    if os.path.exists(upload_dir):
-        files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
-        if files:
-            file_path = os.path.join(upload_dir, files[0])
-            print(f"Loading default PDF: {files[0]}")
-            
-            try:
-                # Upload to Google on startup to prime the cache
-                file_name = pdf_manager.upload_pdf(file_path, display_name="Default PDF")
-                if file_name:
-                    sessions[file_id] = file_name
-                    processing_status[file_id] = {"status": "completed", "progress": 100, "message": "Готово (Default PDF)!"}
-                    print(f"SUCCESS: Successfully loaded default PDF into session '{file_id}'")
-                else:
-                    print("ERROR: Failed to upload default PDF to Gemini")
-            except Exception as e:
-                print(f"ERROR: Error loading default PDF: {e}")
+# Startup logic is now handled in lifespan context manager
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

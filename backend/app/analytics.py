@@ -48,6 +48,9 @@ class AnalyticsManager:
         """
         Logs a usage event and calculates the cost.
         """
+        input_tokens = input_tokens or 0
+        output_tokens = output_tokens or 0
+        cached_tokens = cached_tokens or 0
         total_tokens = input_tokens + output_tokens + cached_tokens
         cost = self._calculate_cost(model_id, input_tokens, output_tokens, cached_tokens)
         
@@ -67,7 +70,7 @@ class AnalyticsManager:
             
         # Enhanced Console Output
         print("-" * 30)
-        print(f"📊 [Analytics] {operation_type.replace('_', ' ').title()}")
+        print(f"[Analytics] {operation_type.replace('_', ' ').title()}")
         print(f"   Model:   {model_id}")
         print(f"   Tokens:  {total_tokens:,} (In: {input_tokens:,}, Out: {output_tokens:,}, Cached: {cached_tokens:,})")
         print(f"   Cost:    ${cost:.6f}")
