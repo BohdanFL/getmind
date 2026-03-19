@@ -86,6 +86,7 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
         const hlTextMatches = Array.from(assistantContent.matchAll(hlTextRegex));
         for (const match of hlTextMatches) {
           const [full, page, text] = match;
+          console.log(`[DEBUG] AI Highlight (Text): Page ${page}, Content: "${text}"`);
           onHighlight?.({
             page: parseInt(page),
             text: text,
@@ -98,6 +99,7 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
         const hlMatches = Array.from(assistantContent.matchAll(hlRegex));
         for (const match of hlMatches) {
           const [full, page, ymin, xmin, ymax, xmax] = match;
+          console.log(`[DEBUG] AI Highlight (Box): Page ${page}, Coordinates: [${ymin}, ${xmin}, ${ymax}, ${xmax}]`);
           onHighlight?.({
             page: parseInt(page),
             box: {

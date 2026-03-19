@@ -244,6 +244,9 @@ const PdfViewer = ({
         scale: number,
     ) => {
         try {
+            const pageNum = page.pageNumber;
+            console.log(`[DEBUG] UI Resolving Highlighting: Page ${pageNum}, Search: "${searchText}"`);
+            
             const textContent = await page.getTextContent();
             const viewport = page.getViewport({ scale });
             const items = (textContent.items || []).filter(
@@ -253,7 +256,10 @@ const PdfViewer = ({
                     item.transform.length === 6,
             );
 
-            if (items.length === 0) return [];
+            if (items.length === 0) {
+                console.warn(`[DEBUG] UI Resolution Failed: No text items found on page ${pageNum}`);
+                return [];
+            }
 
             const normalizedSearch = searchText
                 .replace(/\s+/g, ' ')
@@ -271,12 +277,17 @@ const PdfViewer = ({
                     .replace(/[.,!?;:]+$/, '')
                     .trim();
                 if (trimmed.length > 10) {
+                    console.log(`[DEBUG] UI Partial Match Attempt: Searching for trimmed text: "${trimmed}"`);
                     startIndex = normalizedFull.indexOf(trimmed);
                     matchLen = trimmed.length;
                 }
             }
 
-            if (startIndex === -1) return [];
+            if (startIndex === -1) {
+                console.warn(`[DEBUG] UI Resolution Failed: Text not found in page ${pageNum} text layer.`);
+                console.log(`[DEBUG] UI Content Sample (Page ${pageNum}): "${normalizedFull.substring(0, 100)}..."`);
+                return [];
+            }
 
             const rects: ResolvedRect[] = [];
             const endIndex = startIndex + matchLen;
@@ -285,10 +296,6 @@ const PdfViewer = ({
             for (const item of items) {
                 const itemNorm = item.str.replace(/\s+/g, ' ');
                 const itemLen = itemNorm.length;
-
-                // If item is just whitespace and we are joining with ' ',
-                // it still takes up space in normalizedFull if it was consecutive with other spaces.
-                // But replace(/\s+/g, ' ') handled that.
 
                 const itemStart = currentNormPos;
                 const itemEnd = currentNormPos + itemLen;
@@ -310,9 +317,10 @@ const PdfViewer = ({
                 currentNormPos = itemEnd + 1; // +1 for the space in join(' ')
             }
 
+            console.log(`[DEBUG] UI Highlight Resolution SUCCESS: Page ${pageNum}, Found ${rects.length} rectangles.`);
             return rects;
         } catch (err) {
-            console.error('Error finding text rects:', err);
+            console.error('[DEBUG] UI Resolution Critical Error:', err);
             return [];
         }
     };
