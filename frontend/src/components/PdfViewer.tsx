@@ -21,13 +21,21 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 interface Highlight {
     page: number;
-    box: {
+    box?: {
         ymin: number;
         xmin: number;
         ymax: number;
         xmax: number;
     };
+    text?: string;
     label?: string;
+}
+
+interface ResolvedRect {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
 }
 
 interface PdfViewerProps {
@@ -41,9 +49,11 @@ interface PdfViewerProps {
 const HighlightOverlay = ({
     highlights,
     pageNumber,
+    resolvedRects,
 }: {
     highlights: Highlight[];
     pageNumber: number;
+    resolvedRects: { [key: string]: ResolvedRect[] };
 }) => {
     const pageHighlights = highlights.filter((h) => h.page === pageNumber);
 
@@ -51,23 +61,54 @@ const HighlightOverlay = ({
 
     return (
         <div className="absolute inset-0 pointer-events-none z-30">
-            {pageHighlights.map((h, i) => (
-                <div
-                    key={i}
-                    className="absolute bg-yellow-400/30 border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.2)] rounded-sm"
-                    style={{
-                        top: `${h.box.ymin / 10}%`,
-                        left: `${h.box.xmin / 10}%`,
-                        width: `${(h.box.xmax - h.box.xmin) / 10}%`,
-                        height: `${(h.box.ymax - h.box.ymin) / 10}%`,
-                    }}>
-                    {h.label && (
-                        <div className="absolute -top-5 left-0 bg-yellow-500 text-white text-[8px] px-1 py-0.5 rounded-sm font-bold uppercase tracking-tighter shadow-lg">
-                            {h.label}
+            {pageHighlights.map((h, i) => {
+                const highlightId = h.text
+                    ? `${h.page}-${h.text}`
+                    : `${h.page}-${h.box?.xmin}-${h.box?.ymin}`;
+                const rects = h.text ? resolvedRects[highlightId] : null;
+
+                if (h.text && !rects) return null;
+
+                if (rects) {
+                    return rects.map((r, ri) => (
+                        <div
+                            key={`${i}-${ri}`}
+                            className="absolute bg-yellow-400/30 border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.2)] rounded-sm"
+                            style={{
+                                top: `${r.top}px`,
+                                left: `${r.left}px`,
+                                width: `${r.width}px`,
+                                height: `${r.height}px`,
+                            }}>
+                            {ri === 0 && h.label && (
+                                <div className="absolute -top-5 left-0 bg-yellow-500 text-white text-[8px] px-1 py-0.5 rounded-sm font-bold uppercase tracking-tighter shadow-lg">
+                                    {h.label}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            ))}
+                    ));
+                }
+
+                if (!h.box) return null;
+
+                return (
+                    <div
+                        key={i}
+                        className="absolute bg-yellow-400/30 border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.2)] rounded-sm"
+                        style={{
+                            top: `${h.box.ymin / 10}%`,
+                            left: `${h.box.xmin / 10}%`,
+                            width: `${(h.box.xmax - h.box.xmin) / 10}%`,
+                            height: `${(h.box.ymax - h.box.ymin) / 10}%`,
+                        }}>
+                        {h.label && (
+                            <div className="absolute -top-5 left-0 bg-yellow-500 text-white text-[8px] px-1 py-0.5 rounded-sm font-bold uppercase tracking-tighter shadow-lg">
+                                {h.label}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 };
@@ -85,9 +126,13 @@ const PdfViewer = ({
         {},
     );
     const [internalPage, setInternalPage] = useState(1);
+    const [resolvedRects, setResolvedRects] = useState<{
+        [key: string]: ResolvedRect[];
+    }>({});
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const pageRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+    const pdfPages = useRef<{ [key: number]: any }>({});
 
     const RENDER_WINDOW = 2; // Render current ± 2 pages
 
@@ -155,6 +200,32 @@ const PdfViewer = ({
         return () => observer.disconnect();
     }, [numPages, onPageChange]);
 
+    // Re-resolve all text highlights when scale or highlights change
+    useEffect(() => {
+        const resolveAll = async () => {
+            const newResolved: { [key: string]: ResolvedRect[] } = {};
+
+            for (const highlight of highlights) {
+                if (highlight.text) {
+                    const id = `${highlight.page}-${highlight.text}`;
+                    const page = pdfPages.current[highlight.page];
+                    if (page) {
+                        const rects = await findTextRects(
+                            page,
+                            highlight.text,
+                            scale,
+                        );
+                        newResolved[id] = rects;
+                    }
+                }
+            }
+
+            setResolvedRects(newResolved);
+        };
+
+        resolveAll();
+    }, [highlights, scale, numPages]);
+
     const goToPrevPage = () => {
         const prev = Math.max(currentPage - 1, 1);
         onPageChange(prev);
@@ -166,6 +237,85 @@ const PdfViewer = ({
     };
     const zoomIn = () => setScale((prev) => Math.min(prev + 0.2, 2.0));
     const zoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.5));
+
+    const findTextRects = async (
+        page: any,
+        searchText: string,
+        scale: number,
+    ) => {
+        try {
+            const textContent = await page.getTextContent();
+            const viewport = page.getViewport({ scale });
+            const items = (textContent.items || []).filter(
+                (item: any) =>
+                    typeof item.str === 'string' &&
+                    item.transform &&
+                    item.transform.length === 6,
+            );
+
+            if (items.length === 0) return [];
+
+            const normalizedSearch = searchText
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+            const fullText = items.map((item: any) => item.str).join(' ');
+            const normalizedFull = fullText.replace(/\s+/g, ' ').toLowerCase();
+
+            let startIndex = normalizedFull.indexOf(normalizedSearch);
+            let matchLen = normalizedSearch.length;
+
+            if (startIndex === -1) {
+                // Fallback: try a slighty shorter version (ignore trailing punctuation)
+                const trimmed = normalizedSearch
+                    .replace(/[.,!?;:]+$/, '')
+                    .trim();
+                if (trimmed.length > 10) {
+                    startIndex = normalizedFull.indexOf(trimmed);
+                    matchLen = trimmed.length;
+                }
+            }
+
+            if (startIndex === -1) return [];
+
+            const rects: ResolvedRect[] = [];
+            const endIndex = startIndex + matchLen;
+            let currentNormPos = 0;
+
+            for (const item of items) {
+                const itemNorm = item.str.replace(/\s+/g, ' ');
+                const itemLen = itemNorm.length;
+
+                // If item is just whitespace and we are joining with ' ',
+                // it still takes up space in normalizedFull if it was consecutive with other spaces.
+                // But replace(/\s+/g, ' ') handled that.
+
+                const itemStart = currentNormPos;
+                const itemEnd = currentNormPos + itemLen;
+
+                if (itemEnd > startIndex && itemStart < endIndex) {
+                    const tx = pdfjs.Util.transform(
+                        viewport.transform,
+                        item.transform,
+                    );
+                    const x = tx[4];
+                    const y = tx[5] - (item.height || 0) * scale;
+                    const w = (item.width || 0) * scale;
+                    const h = (item.height || 0) * scale;
+
+                    if (w > 0 && h > 0) {
+                        rects.push({ left: x, top: y, width: w, height: h });
+                    }
+                }
+                currentNormPos = itemEnd + 1; // +1 for the space in join(' ')
+            }
+
+            return rects;
+        } catch (err) {
+            console.error('Error finding text rects:', err);
+            return [];
+        }
+    };
 
     return (
         <Card className="flex-1 flex flex-col bg-slate-950/20 border-slate-800/40 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl relative">
@@ -289,7 +439,7 @@ const PdfViewer = ({
                                             minHeight: height
                                                 ? `${height}px`
                                                 : '800px',
-                                            scrollMarginTop: '-10px',
+                                            scrollMarginTop: '10px',
                                         }}
                                         className="relative overflow-hidden bg-white border-b border-slate-200/10 last:border-0 w-full flex justify-center">
                                         {isVisible && (
@@ -299,7 +449,9 @@ const PdfViewer = ({
                                                     scale={scale}
                                                     renderTextLayer={true}
                                                     renderAnnotationLayer={true}
-                                                    onLoadSuccess={(page) => {
+                                                    onLoadSuccess={async (
+                                                        page,
+                                                    ) => {
                                                         const h = Math.ceil(
                                                             page.view[3] *
                                                                 scale,
@@ -317,6 +469,48 @@ const PdfViewer = ({
                                                                 }),
                                                             );
                                                         }
+
+                                                        // Cache the page object for highlight resolution
+                                                        pdfPages.current[
+                                                            pageNum
+                                                        ] = page;
+
+                                                        // Trigger a re-resolution for this page
+                                                        const pageHighlights =
+                                                            highlights.filter(
+                                                                (h) =>
+                                                                    h.page ===
+                                                                        pageNum &&
+                                                                    h.text,
+                                                            );
+                                                        if (
+                                                            pageHighlights.length >
+                                                            0
+                                                        ) {
+                                                            for (const h of pageHighlights) {
+                                                                const searchText =
+                                                                    h.text;
+                                                                if (
+                                                                    searchText
+                                                                ) {
+                                                                    const id = `${h.page}-${searchText}`;
+                                                                    const rects =
+                                                                        await findTextRects(
+                                                                            page,
+                                                                            searchText,
+                                                                            scale,
+                                                                        );
+                                                                    setResolvedRects(
+                                                                        (
+                                                                            prev,
+                                                                        ) => ({
+                                                                            ...prev,
+                                                                            [id]: rects,
+                                                                        }),
+                                                                    );
+                                                                }
+                                                            }
+                                                        }
                                                     }}
                                                     loading={
                                                         <div className="flex items-center justify-center min-h-[400px] w-full bg-slate-900/10">
@@ -327,6 +521,9 @@ const PdfViewer = ({
                                                 <HighlightOverlay
                                                     highlights={highlights}
                                                     pageNumber={pageNum}
+                                                    resolvedRects={
+                                                        resolvedRects
+                                                    }
                                                 />
                                             </>
                                         )}

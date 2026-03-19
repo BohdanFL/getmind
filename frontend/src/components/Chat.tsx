@@ -81,10 +81,22 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
         const chunk = decoder.decode(value, { stream: true });
         assistantContent += chunk;
 
+        // Parser for [[HL_TEXT:page,"text"]]
+        const hlTextRegex = /\[\[HL_TEXT:(\d+),"([^"]+)"\]\]/g;
+        const hlTextMatches = Array.from(assistantContent.matchAll(hlTextRegex));
+        for (const match of hlTextMatches) {
+          const [full, page, text] = match;
+          onHighlight?.({
+            page: parseInt(page),
+            text: text,
+          });
+          assistantContent = assistantContent.replace(full, "");
+        }
+
         // Simple parser for [[HL:page,ymin,xmin,ymax,xmax]]
         const hlRegex = /\[\[HL:(\d+),(\d+),(\d+),(\d+),(\d+)\]\]/g;
-        let match;
-        while ((match = hlRegex.exec(assistantContent)) !== null) {
+        const hlMatches = Array.from(assistantContent.matchAll(hlRegex));
+        for (const match of hlMatches) {
           const [full, page, ymin, xmin, ymax, xmax] = match;
           onHighlight?.({
             page: parseInt(page),
@@ -95,7 +107,6 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
               xmax: parseInt(xmax)
             }
           });
-          // Remove the tag from the displayed content to keep it clean
           assistantContent = assistantContent.replace(full, "");
         }
 

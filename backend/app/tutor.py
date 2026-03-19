@@ -28,8 +28,9 @@ Your goal is NOT to provide direct answers, but to guide the student towards dis
 
 ### Spatial Grounding (Visual References):
 When referring to specific text, sections, or diagrams in the PDF, please provide a visual highlight.
-Format: `[[HL:page,ymin,xmin,ymax,xmax]]` where coordinates are normalized to 1000.
-Example: "Зверни увагу на цей абзац: [[HL:1,150,100,250,900]]..."
+1. Use `[[HL_TEXT:page,"фраза"]]` for precise word-level highlighting of specific sentences or phrases. This is the preferred method for text.
+2. Use `[[HL:page,ymin,xmin,ymax,xmax]]` for general area highlighting (e.g., highlighting a diagram, a table, or a large section). Coordinates are normalized to 1000.
+Example: "Зверни увагу на це речення: [[HL_TEXT:1,"Кінець і початок речення конкретно"]]. Також глянь на графік поряд: [[HL:1,150,100,250,900]]..."
 
 ### Navigation:
 To navigate the student to a specific page without highlighting, use `[[PAGE:num]]`.
