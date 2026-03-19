@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 
 function App() {
     const [fileId, setFileId] = useState<string | null>(null);
+    const [highlights, setHighlights] = useState<any[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Check for existing (cached) session on mount
     useEffect(() => {
@@ -91,7 +93,14 @@ function App() {
                     ) : (
                         <PdfViewer
                             fileId={fileId}
-                            onReset={() => setFileId(null)}
+                            onReset={() => {
+                                setFileId(null);
+                                setHighlights([]);
+                                setCurrentPage(1);
+                            }}
+                            highlights={highlights}
+                            currentPage={currentPage}
+                            onPageChange={setCurrentPage}
                         />
                     )}
                 </div>
@@ -99,7 +108,15 @@ function App() {
                 {/* Right Panel: Chat & Meta */}
                 <div className="lg:col-span-4 flex flex-col space-y-4 h-[calc(100vh-180px)]">
                     <div className="flex-1 min-h-0">
-                        <Chat fileId={fileId} />
+                        <Chat 
+                            fileId={fileId} 
+                            onHighlight={(h) => {
+                                setHighlights(prev => [...prev, h]);
+                                if (h.page) setCurrentPage(h.page);
+                            }}
+                            onClearHighlights={() => setHighlights([])}
+                            onPageChange={setCurrentPage}
+                        />
                     </div>
 
                     <Card className="h-32 glass-card rounded-2xl p-5 border-slate-800/20 relative overflow-hidden">

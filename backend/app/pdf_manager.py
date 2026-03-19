@@ -77,7 +77,8 @@ class PDFManager:
                     uploaded_file = self.client.files.upload(
                         file=file_path,
                         config=types.UploadFileConfig(
-                            display_name=unique_display_name
+                            display_name=unique_display_name,
+                            mime_type='application/pdf'
                         )
                     )
 
@@ -112,5 +113,9 @@ class PDFManager:
             return None
             
         except Exception as e:
-            print(f"Error in upload_pdf: {e}")
+            err_msg = str(e)
+            if "no pages" in err_msg.lower():
+                print(f"ERROR: PDF file at {file_path} is invalid or has no pages.")
+            else:
+                print(f"Error in upload_pdf: {e}")
             return None
