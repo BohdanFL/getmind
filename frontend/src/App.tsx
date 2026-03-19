@@ -108,10 +108,10 @@ function App() {
                 {/* Right Panel: Chat & Meta */}
                 <div className="lg:col-span-4 flex flex-col space-y-4 h-[calc(100vh-180px)]">
                     <div className="flex-1 min-h-0">
-                        <Chat 
-                            fileId={fileId} 
+                        <Chat
+                            fileId={fileId}
                             onHighlight={(h) => {
-                                setHighlights(prev => [...prev, h]);
+                                setHighlights((prev) => [...prev, h]);
                                 if (h.page) setCurrentPage(h.page);
                             }}
                             onClearHighlights={() => setHighlights([])}
