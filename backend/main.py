@@ -10,18 +10,12 @@ import shutil
 import os
 import uuid
 
-# Import our custom modules
 from app.pdf_manager import PDFManager
 from app.tutor import SocraticTutor
 
-# # Вимикає деякі проблеми з проксі/сертифікатами, які часто тригерять 10054 на Win
-# os.environ["CURL_CA_BUNDLE"] = "" 
-# # Якщо використовуєте gRPC (старі версії SDK), це допомагає:
-# os.environ["GRPC_DNS_RESOLVER"] = "native"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
     upload_dir = "uploads"
     file_id = "default"
 
@@ -32,7 +26,6 @@ async def lifespan(app: FastAPI):
             print(f"Loading default PDF: {files[0]}")
             
             try:
-                # Upload to Google on startup to prime the cache
                 file_name = pdf_manager.upload_pdf(file_path, display_name="Default PDF")
                 if file_name:
                     sessions[file_id] = file_name
@@ -44,15 +37,13 @@ async def lifespan(app: FastAPI):
                 print(f"ERROR: Error loading default PDF: {e}")
     
     yield
-    # Shutdown logic (if any) can go here
 
 app = FastAPI(
     title="GetMind API", 
-    description="AI-driven Socratic Tuturing Platform",
+    description="AI-driven Socratic Tutoring Platform",
     lifespan=lifespan
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -64,7 +55,6 @@ app.add_middleware(
 pdf_manager = PDFManager()
 tutor = SocraticTutor()
 
-# In-memory storage for simplicity in MVP
 sessions = {}
 processing_status: Dict[str, dict] = {}
 
@@ -102,12 +92,11 @@ async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File
     upload_dir = "uploads"
     if not os.path.exists(upload_dir):
         os.makedirs(upload_dir)
-        
+
     file_path = os.path.join(upload_dir, f"{file_id}.pdf")
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Initialize status and start background task
     processing_status[file_id] = {"status": "started", "progress": 0, "message": "Файл отримано..."}
     background_tasks.add_task(process_pdf_task, file_id, file_path)
     
@@ -116,7 +105,6 @@ async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File
 @app.get("/upload/status/{file_id}")
 async def get_upload_status(file_id: str):
     if file_id not in processing_status:
-        # Check if it was already processed and exists in sessions
         if file_id in sessions:
             return {"status": "completed", "progress": 100, "message": "Готово!"}
         raise HTTPException(status_code=404, detail="Processing status not found")
@@ -126,7 +114,6 @@ async def get_upload_status(file_id: str):
 async def get_pdf(file_id: str):
     file_path = os.path.join("uploads", f"{file_id}.pdf")
     if not os.path.exists(file_path):
-        # Check if it's the "default" session, might map to actual file
         if file_id == "default":
             upload_dir = "uploads"
             if os.path.exists(upload_dir):
@@ -148,13 +135,11 @@ async def get_pdf(file_id: str):
 async def chat_endpoint(request: ChatRequest):
     try:
         file_name = None
-        if request.file_id is not None and request.file_id in sessions:
-            file_name = sessions[request.file_id]
-        elif "default" in sessions:
-            file_name = sessions["default"]
+        # if request.file_id is not None and request.file_id in sessions:
+        #     file_name = sessions[request.file_id]
+        # elif "default" in sessions:
+        #     file_name = sessions["default"]
             
-        # We no longer send LangChain messages, we'll let tutor handle the raw format
-        # or we just pass the raw dict to the new native tutor implementation.
         return StreamingResponse(
             tutor.get_streaming_response(
                 chat_history=request.history,
@@ -172,7 +157,6 @@ async def chat_endpoint(request: ChatRequest):
         print(f"Error in chat: {e}")
         return {"reply": "Вибач, я не зміг обробити твоє запитання."}
 
-# Startup logic is now handled in lifespan context manager
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

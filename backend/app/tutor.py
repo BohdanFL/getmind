@@ -26,6 +26,15 @@ Your goal is NOT to provide direct answers, but to guide the student towards dis
 4. Reference the provided source material directly (quote text or mention page numbers if available).
 5. If the student is stuck, provide a small hint rather than the full solution.
 
+### Spatial Grounding (Visual References):
+When referring to specific text, sections, or diagrams in the PDF, please provide a visual highlight.
+1. Use `[[HL_TEXT:page,"фраза"]]` for precise word-level highlighting of specific sentences or phrases. This is the preferred method for text.
+2. Use `[[HL:page,ymin,xmin,ymax,xmax]]` for general area highlighting (e.g., highlighting a diagram, a table, or a large section). Coordinates are normalized to 1000.
+Example: "Зверни увагу на це речення: [[HL_TEXT:1,"Кінець і початок речення конкретно"]]. Також глянь на графік поряд: [[HL:1,150,100,250,900]]..."
+
+### Navigation:
+To navigate the student to a specific page without highlighting, use `[[PAGE:num]]`.
+
 Response language: Ukrainian (unless asked otherwise). Stay encouraging and patient.
 """
 
@@ -34,7 +43,6 @@ class SocraticTutor:
         # Gemini 3.1 Flash-Lite: Best price/performance ratio for chat
         self.model_id = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
         
-        # Native GenAI Client
         api_key = os.getenv("GOOGLE_API_KEY")
         self.client = genai.Client(api_key=api_key)
         self.system_instruction = SOCRATIC_SYSTEM_PROMPT
@@ -91,26 +99,25 @@ class SocraticTutor:
             
         return "60s"
 
-    # Note: async generator for FastAPI StreamingResponse
     async def get_streaming_response(self, chat_history, file_name, user_query):
         print("Streaming response natively from Gemini")
         
-        # 1. Format Chat History into a single string to maintain context
         history_text = ""
         if chat_history:
             for msg in chat_history:
-                role = "Студент" if msg["role"] == "user" else "Тютор"
+                if not msg or "role" not in msg or "content" not in msg:
+                    continue
+                role = "Student" if msg["role"] == "user" else "Tutor"
                 history_text += f"**{role}**: {msg['content']}\n\n"
                 
         prompt = ""
         if history_text:
-            prompt += f"--- Історія переписки ---\n{history_text}\n"
-        prompt += f"--- Запитання студента ---\n{user_query}"
+            prompt += f"--- Chat History ---\n{history_text}\n"
+        prompt += f"--- Student's Question ---\n{user_query}"
         
         try:
             request_contents = []
             
-            # 2. Add the uploaded PDF file via the explicit file object
             if file_name:
                 try:
                     print(f"Retrieving native file object: {file_name}")
@@ -125,11 +132,9 @@ class SocraticTutor:
                 except Exception as e:
                     print(f"Error retrieving file from Google GenAI: {e}")
             
-            # 3. Add the prompt
             request_contents.append(prompt)
 
             
-            # 4. Stream response with retry logic
             max_retries = 3
             tokens_yielded = 0
 
@@ -165,7 +170,6 @@ class SocraticTutor:
                     end_time = time.time()
                     latency_ms = int((end_time - start_time) * 1000)
 
-                    # 5. Log usage after success
                     if last_usage:
                         from .analytics import analytics
                         await analytics.log_usage_async(
@@ -186,6 +190,8 @@ class SocraticTutor:
 
                 except Exception as e:
                     action, message = self._classify_error(e, tokens_yielded, attempt, max_retries)
+                    import traceback
+                    print(traceback.format_exc())
                     if message:
                         yield message
                     if action == "stop":
@@ -222,7 +228,6 @@ class SocraticTutor:
         is_connection = any(msg in err_msg.lower() for msg in ["connection", "timeout", "transfer", "reset"])
         if is_connection and attempt < max_retries - 1:
             return "retry", None
-
 
         return "fail", "Вибач, я не зміг обробити твоє запитання. Спробуй, будь ласка, ще раз через хвилину."
 
