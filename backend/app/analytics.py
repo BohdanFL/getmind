@@ -99,7 +99,8 @@ class AnalyticsManager:
             input_rate = 0.25 / 1_000_000
             output_rate = 1.50 / 1_000_000
             cached_rate = 0.025 / 1_000_000
-
+        else:
+            return 0
         # Simple linear calculation
         cost = (input_tokens * input_rate) + (output_tokens * output_rate) + (cached_tokens * cached_rate)
         return cost

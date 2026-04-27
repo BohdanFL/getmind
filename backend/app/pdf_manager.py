@@ -96,17 +96,17 @@ class PDFManager:
             if uploaded_file:
                 print(f"Successfully uploaded: {uploaded_file.name}")
                 
-                # analytics.log_usage(
-                #     operation_type="file_upload",
-                #     model_id=self.model_id,
-                #     input_tokens=input_tokens,
-                #     latency_ms=latency_ms,
-                #     extra_metadata={
-                #         "file_name": os.path.basename(file_path),
-                #         "google_file_id": uploaded_file.name,
-                #         "hash": file_hash
-                #     }
-                # )
+                analytics.log_usage_async(
+                    operation_type="file_upload",
+                    model_id=self.model_id,
+                    input_tokens=input_tokens,
+                    latency_ms=latency_ms,
+                    extra_metadata={
+                        "file_name": os.path.basename(file_path),
+                        "google_file_id": uploaded_file.name,
+                        "hash": file_hash
+                    }
+                )
                 return uploaded_file.name
             
             return None
