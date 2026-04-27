@@ -11,8 +11,9 @@ import { cn } from '@/lib/utils';
 
 function App() {
     const [fileId, setFileId] = useState<string | null>(null);
+    const [highlights, setHighlights] = useState<any[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
 
-    // Check for existing (cached) session on mount
     useEffect(() => {
         const checkDefaultSession = async () => {
             try {
@@ -34,7 +35,6 @@ function App() {
 
     return (
         <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8 flex flex-col font-sans selection:bg-neon-blue/30 overflow-hidden relative">
-            {/* Neural Background Elements */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-15%] left-[-5%] w-[50%] h-[50%] bg-blue-600/5 rounded-full blur-[140px] animate-pulse" />
                 <div
@@ -63,24 +63,30 @@ function App() {
                     </div>
                 </div>
 
-                {/* <div className="hidden md:flex flex-1 max-w-2xl px-12">
-           <BloomMastery />
-        </div> */}
-                {/* 
-        <div className="flex items-center space-x-4">
-          <div className="flex flex-col items-end space-y-1">
-             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Cognitive Load</span>
-             <div className="flex space-x-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={cn("w-1.5 h-3 rounded-sm", i <= 3 ? "bg-blue-500" : "bg-slate-800")} />
-                ))}
-             </div>
-          </div>
-        </div>
-       */}
+                <div className="hidden md:flex flex-1 max-w-2xl px-12">
+                    <BloomMastery />
+                </div>
+
+                <div className="flex items-center space-x-4">
+                    <div className="flex flex-col items-end space-y-1">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Cognitive Load
+                        </span>
+                        <div className="flex space-x-1">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <div
+                                    key={i}
+                                    className={cn(
+                                        'w-1.5 h-3 rounded-sm',
+                                        i <= 3 ? 'bg-blue-500' : 'bg-slate-800',
+                                    )}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </header>
             <div className="max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 relative z-10 min-h-0">
-                {/* Left Panel: Content / Upload */}
                 <div className="lg:col-span-8 flex flex-col space-y-4 h-[calc(100vh-180px)]">
                     {!fileId ? (
                         <Card className="flex-1 glass-card rounded-3xl overflow-hidden flex items-center justify-center p-6 border-slate-800/20">
@@ -91,15 +97,29 @@ function App() {
                     ) : (
                         <PdfViewer
                             fileId={fileId}
-                            onReset={() => setFileId(null)}
+                            onReset={() => {
+                                setFileId(null);
+                                setHighlights([]);
+                                setCurrentPage(1);
+                            }}
+                            highlights={highlights}
+                            currentPage={currentPage}
+                            onPageChange={setCurrentPage}
                         />
                     )}
                 </div>
 
-                {/* Right Panel: Chat & Meta */}
                 <div className="lg:col-span-4 flex flex-col space-y-4 h-[calc(100vh-180px)]">
                     <div className="flex-1 min-h-0">
-                        <Chat fileId={fileId} />
+                        <Chat
+                            fileId={fileId}
+                            onHighlight={(h) => {
+                                setHighlights((prev) => [...prev, h]);
+                                if (h.page) setCurrentPage(h.page);
+                            }}
+                            onClearHighlights={() => setHighlights([])}
+                            onPageChange={setCurrentPage}
+                        />
                     </div>
 
                     <Card className="h-32 glass-card rounded-2xl p-5 border-slate-800/20 relative overflow-hidden">
