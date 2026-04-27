@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BloomMastery } from './components/BloomMastery';
-import { Zap, Activity, Brain } from 'lucide-react';
+import { Zap, Activity, Brain, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 function App() {
     const [fileId, setFileId] = useState<string | null>(null);
@@ -60,6 +61,12 @@ function App() {
                             <span className="w-1.5 h-1.5 rounded-full bg-cyber-emerald mr-2 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                             NEURAL LINK ACTIVE
                         </Badge>
+                        <Link to="/graph-test">
+                            <Badge variant="outline" className="px-2 py-0.5 bg-blue-900/30 border-blue-800 text-blue-400 text-[10px] font-mono cursor-pointer hover:bg-blue-800/50 transition-colors flex items-center gap-1">
+                                <Share2 size={10} />
+                                KG TEST
+                            </Badge>
+                        </Link>
                     </div>
                 </div>
 
