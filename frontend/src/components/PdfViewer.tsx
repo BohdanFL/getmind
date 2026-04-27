@@ -16,7 +16,6 @@ import {
     Loader2,
 } from 'lucide-react';
 
-// Set up worker for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface Highlight {
@@ -138,7 +137,6 @@ const PdfViewer = ({
 
     const pdfUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/pdf/${fileId}`;
 
-    // Update pageRefs when numPages changes
     const pagesList = useMemo(() => {
         return Array.from({ length: numPages || 0 }, (_, i) => i + 1);
     }, [numPages]);
@@ -147,7 +145,6 @@ const PdfViewer = ({
         setNumPages(numPages);
     }
 
-    // 1. External sync: props -> internal
     useEffect(() => {
         if (currentPage !== internalPage) {
             setInternalPage(currentPage);
@@ -166,14 +163,12 @@ const PdfViewer = ({
         }
     }, [internalPage]);
 
-    // 3. Track visible page while scrolling
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (!container || !numPages) return;
 
         const observer = new IntersectionObserver(
             (entries) => {
-                // Find the page that is currently crossing the top line (rootMargin line)
                 const visible = entries.find((e) => e.isIntersecting);
 
                 if (visible) {
@@ -187,7 +182,6 @@ const PdfViewer = ({
             },
             {
                 root: container,
-                // Create a thin detection line at the very top (1px tall)
                 rootMargin: '0px 0px -99% 0px',
                 threshold: 0,
             },
@@ -200,7 +194,6 @@ const PdfViewer = ({
         return () => observer.disconnect();
     }, [numPages, onPageChange]);
 
-    // Re-resolve all text highlights when scale or highlights change
     useEffect(() => {
         const resolveAll = async () => {
             const newResolved: { [key: string]: ResolvedRect[] } = {};
@@ -261,61 +254,70 @@ const PdfViewer = ({
                 return [];
             }
 
-            const normalizedSearch = searchText
-                .replace(/\s+/g, ' ')
-                .trim()
-                .toLowerCase();
-            const fullText = items.map((item: any) => item.str).join(' ');
-            const normalizedFull = fullText.replace(/\s+/g, ' ').toLowerCase();
+            let searchable = "";
+            const indexMap: { itemIdx: number; charIdx: number }[] = [];
 
-            let startIndex = normalizedFull.indexOf(normalizedSearch);
-            let matchLen = normalizedSearch.length;
-
-            if (startIndex === -1) {
-                // Fallback: try a slighty shorter version (ignore trailing punctuation)
-                const trimmed = normalizedSearch
-                    .replace(/[.,!?;:]+$/, '')
-                    .trim();
-                if (trimmed.length > 10) {
-                    console.log(`[DEBUG] UI Partial Match Attempt: Searching for trimmed text: "${trimmed}"`);
-                    startIndex = normalizedFull.indexOf(trimmed);
-                    matchLen = trimmed.length;
+            items.forEach((item: any, itemIdx: number) => {
+                const str = item.str;
+                for (let j = 0; j < str.length; j++) {
+                    const lower = str[j].toLowerCase();
+                    if (/[a-z0-9]/.test(lower)) {
+                        searchable += lower;
+                        indexMap.push({ itemIdx, charIdx: j });
+                    }
                 }
-            }
+            });
+
+            const normalizedSearch = searchText
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+
+            console.log(`[DEBUG] UI Sub-Item Map built. Length: ${searchable.length}`);
+            
+            const startIndex = searchable.indexOf(normalizedSearch);
+            const matchLen = normalizedSearch.length;
 
             if (startIndex === -1) {
-                console.warn(`[DEBUG] UI Resolution Failed: Text not found in page ${pageNum} text layer.`);
-                console.log(`[DEBUG] UI Content Sample (Page ${pageNum}): "${normalizedFull.substring(0, 100)}..."`);
+                console.warn(`[DEBUG] UI Resolution Failed: Text not found in page ${pageNum} mapping.`);
                 return [];
             }
 
-            const rects: ResolvedRect[] = [];
-            const endIndex = startIndex + matchLen;
-            let currentNormPos = 0;
+            const matchSnippet = searchable.substring(startIndex, startIndex + matchLen);
+            console.log(`[DEBUG] UI Match Found: "${matchSnippet}"`);
 
-            for (const item of items) {
-                const itemNorm = item.str.replace(/\s+/g, ' ');
-                const itemLen = itemNorm.length;
-
-                const itemStart = currentNormPos;
-                const itemEnd = currentNormPos + itemLen;
-
-                if (itemEnd > startIndex && itemStart < endIndex) {
-                    const tx = pdfjs.Util.transform(
-                        viewport.transform,
-                        item.transform,
-                    );
-                    const x = tx[4];
-                    const y = tx[5] - (item.height || 0) * scale;
-                    const w = (item.width || 0) * scale;
-                    const h = (item.height || 0) * scale;
-
-                    if (w > 0 && h > 0) {
-                        rects.push({ left: x, top: y, width: w, height: h });
-                    }
+            const itemRanges: { [key: number]: { min: number; max: number } } = {};
+            for (let i = startIndex; i < startIndex + matchLen; i++) {
+                const { itemIdx, charIdx } = indexMap[i];
+                if (!itemRanges[itemIdx]) {
+                    itemRanges[itemIdx] = { min: charIdx, max: charIdx };
+                } else {
+                    itemRanges[itemIdx].min = Math.min(itemRanges[itemIdx].min, charIdx);
+                    itemRanges[itemIdx].max = Math.max(itemRanges[itemIdx].max, charIdx);
                 }
-                currentNormPos = itemEnd + 1; // +1 for the space in join(' ')
             }
+
+            const rects: ResolvedRect[] = [];
+            Object.entries(itemRanges).forEach(([idxStr, range]) => {
+                const itemIdx = parseInt(idxStr);
+                const item = items[itemIdx];
+                const tx = pdfjs.Util.transform(viewport.transform, item.transform);
+                const x = tx[4];
+                const y = tx[5] - (item.height || 0) * scale;
+                const w = (item.width || 0) * scale;
+                const h = (item.height || 0) * scale;
+
+                const totalChars = item.str.length;
+                const ratioStart = range.min / totalChars;
+                const ratioEnd = (range.max + 1) / totalChars;
+
+                const subX = x + ratioStart * w;
+                const subW = (ratioEnd - ratioStart) * w;
+
+                if (subW > 0 && h > 0) {
+                    console.log(`[DEBUG] UI Sub-Match: "${item.str.substring(range.min, range.max + 1)}" -> SubRect: [L:${subX.toFixed(1)}, W:${subW.toFixed(1)}]`);
+                    rects.push({ left: subX, top: y, width: subW, height: h });
+                }
+            });
 
             console.log(`[DEBUG] UI Highlight Resolution SUCCESS: Page ${pageNum}, Found ${rects.length} rectangles.`);
             return rects;
@@ -327,7 +329,6 @@ const PdfViewer = ({
 
     return (
         <Card className="flex-1 flex flex-col bg-slate-950/20 border-slate-800/40 backdrop-blur-md rounded-2xl overflow-hidden shadow-2xl relative">
-            {/* Context Header for the viewer */}
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-neon-blue/20 to-transparent z-20" />
 
             <div className="bg-slate-900/40 border-b border-slate-800/50 p-2.5 flex items-center justify-between z-10 backdrop-blur-xl">
@@ -478,12 +479,10 @@ const PdfViewer = ({
                                                             );
                                                         }
 
-                                                        // Cache the page object for highlight resolution
                                                         pdfPages.current[
                                                             pageNum
                                                         ] = page;
 
-                                                        // Trigger a re-resolution for this page
                                                         const pageHighlights =
                                                             highlights.filter(
                                                                 (h) =>

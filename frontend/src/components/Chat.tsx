@@ -81,7 +81,6 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
         const chunk = decoder.decode(value, { stream: true });
         assistantContent += chunk;
 
-        // Parser for [[HL_TEXT:page,"text"]]
         const hlTextRegex = /\[\[HL_TEXT:(\d+),"([^"]+)"\]\]/g;
         const hlTextMatches = Array.from(assistantContent.matchAll(hlTextRegex));
         for (const match of hlTextMatches) {
@@ -94,7 +93,6 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
           assistantContent = assistantContent.replace(full, "");
         }
 
-        // Simple parser for [[HL:page,ymin,xmin,ymax,xmax]]
         const hlRegex = /\[\[HL:(\d+),(\d+),(\d+),(\d+),(\d+)\]\]/g;
         const hlMatches = Array.from(assistantContent.matchAll(hlRegex));
         for (const match of hlMatches) {
@@ -112,7 +110,6 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
           assistantContent = assistantContent.replace(full, "");
         }
 
-        // Simple parser for [[PAGE:num]]
         const pageRegex = /\[\[PAGE:(\d+)\]\]/g;
         let pageMatch;
         while ((pageMatch = pageRegex.exec(assistantContent)) !== null) {
