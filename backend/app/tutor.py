@@ -6,6 +6,7 @@ from google.genai import types
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List, Optional, Type, Any
+import traceback
 
 load_dotenv()
 
@@ -44,7 +45,10 @@ class SocraticTutor:
         self.model_id = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite-preview")
         
         api_key = os.getenv("GOOGLE_API_KEY")
-        self.client = genai.Client(api_key=api_key)
+        self.client = genai.Client(
+            api_key=api_key,
+            http_options={'timeout': 600.0}
+        )
         self.system_instruction = SOCRATIC_SYSTEM_PROMPT
 
     def _parse_quota_error(self, error_msg: str) -> str:
@@ -190,7 +194,7 @@ class SocraticTutor:
 
                 except Exception as e:
                     action, message = self._classify_error(e, tokens_yielded, attempt, max_retries)
-                    import traceback
+
                     print(traceback.format_exc())
                     if message:
                         yield message
