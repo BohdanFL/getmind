@@ -1,9 +1,8 @@
-import React from 'react';
 import { Brain, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { BloomMastery } from '../BloomMastery';
-import { CognitiveLoadIndicator } from '../dashboard/CognitiveLoadIndicator';
+import { BloomMastery } from '../features/dashboard/BloomMastery';
+import { CognitiveLoadIndicator } from '../features/dashboard/CognitiveLoadIndicator';
 
 export function AppHeader() {
     return (

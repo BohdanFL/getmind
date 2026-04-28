@@ -440,9 +440,9 @@ const PdfViewer = ({
                                 return (
                                     <div
                                         key={pageNum}
-                                        ref={(el) =>
-                                            (pageRefs.current[pageNum] = el)
-                                        }
+                                        ref={(el) => {
+                                            pageRefs.current[pageNum] = el;
+                                        }}
                                         data-page-number={pageNum}
                                         style={{
                                             minHeight: height

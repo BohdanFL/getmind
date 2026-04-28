@@ -1,7 +1,7 @@
-import Chat from './components/Chat';
-import PdfViewer from './components/PdfViewer';
+import Chat from './components/features/chat/Chat';
+import PdfViewer from './components/features/pdf/PdfViewer';
 import { useAppSession } from './hooks/useAppSession';
-import { RetrievalStrengthCard } from './components/dashboard/RetrievalStrengthCard';
+import { RetrievalStrengthCard } from './components/features/dashboard/RetrievalStrengthCard';
 import { MainContainer } from './components/layout/MainContainer';
 import { ContentGrid } from './components/layout/ContentGrid';
 import { MainContentArea } from './components/layout/MainContentArea';
