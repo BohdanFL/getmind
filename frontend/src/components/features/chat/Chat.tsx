@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
@@ -7,11 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
+import { useChatLogic } from "./hooks/useChatLogic";
 
 interface ChatProps {
   fileId: string | null;
@@ -20,12 +16,8 @@ interface ChatProps {
   onPageChange?: (page: number) => void;
 }
 
-export default function Chat({ fileId, onHighlight, onClearHighlights, onPageChange }: ChatProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Вітаю! Я твій **Сократівський тьютор**. Що ми сьогодні будемо досліджувати?" }
-  ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function Chat(props: ChatProps) {
+  const { messages, input, setInput, loading, sendMessage } = useChatLogic(props);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,105 +29,6 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
     }
   }, [messages]);
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-    
-    const userMsg: Message = { role: "user", content: input };
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
-    setLoading(true);
-
-    const assistantMsg: Message = { role: "assistant", content: "" };
-    setMessages(prev => [...prev, assistantMsg]);
-    onClearHighlights?.();
-
-    try {
-      const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chat`;
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: input, 
-          history: messages.slice(-10),
-          file_id: fileId 
-        })
-      });
-      
-      if (!response.body) throw new Error("No body in response");
-      
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantContent = "";
-      let started = false;
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (!started) {
-          started = true;
-          setLoading(false);
-        }
-
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        assistantContent += chunk;
-
-        const hlTextRegex = /\[\[HL_TEXT:(\d+),"([^"]+)"\]\]/g;
-        const hlTextMatches = Array.from(assistantContent.matchAll(hlTextRegex));
-        for (const match of hlTextMatches) {
-          const [full, page, text] = match;
-          console.log(`[DEBUG] AI Highlight (Text): Page ${page}, Content: "${text}"`);
-          onHighlight?.({
-            page: parseInt(page),
-            text: text,
-          });
-          assistantContent = assistantContent.replace(full, "");
-        }
-
-        const hlRegex = /\[\[HL:(\d+),(\d+),(\d+),(\d+),(\d+)\]\]/g;
-        const hlMatches = Array.from(assistantContent.matchAll(hlRegex));
-        for (const match of hlMatches) {
-          const [full, page, ymin, xmin, ymax, xmax] = match;
-          console.log(`[DEBUG] AI Highlight (Box): Page ${page}, Coordinates: [${ymin}, ${xmin}, ${ymax}, ${xmax}]`);
-          onHighlight?.({
-            page: parseInt(page),
-            box: {
-              ymin: parseInt(ymin),
-              xmin: parseInt(xmin),
-              ymax: parseInt(ymax),
-              xmax: parseInt(xmax)
-            }
-          });
-          assistantContent = assistantContent.replace(full, "");
-        }
-
-        const pageRegex = /\[\[PAGE:(\d+)\]\]/g;
-        let pageMatch;
-        while ((pageMatch = pageRegex.exec(assistantContent)) !== null) {
-          const [full, page] = pageMatch;
-          onPageChange?.(parseInt(page));
-          assistantContent = assistantContent.replace(full, "");
-        }
-        
-        setMessages(prev => {
-          const newMsgs = [...prev];
-          newMsgs[newMsgs.length - 1] = { role: "assistant", content: assistantContent };
-          return newMsgs;
-        });
-      }
-    } catch (error) {
-      console.error("Chat error:", error);
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        newMsgs[newMsgs.length - 1] = { role: "assistant", content: "Вибач, сталася помилка з'єднання." };
-        return newMsgs;
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <Card className="flex flex-col h-full bg-slate-900/40 border-slate-800/50 backdrop-blur-md shadow-2xl overflow-hidden text-slate-100 rounded-3xl">
       <CardHeader className="py-4 border-b border-slate-800/50 bg-slate-900/20">
@@ -144,7 +37,7 @@ export default function Chat({ fileId, onHighlight, onClearHighlights, onPageCha
             <span className="w-1.5 h-1.5 rounded-full bg-neon-blue mr-2 shadow-[0_0_8px_var(--color-neon-blue)]" />
             COGNITIVE ASSISTANT
           </CardTitle>
-          {fileId && (
+          {props.fileId && (
             <Badge variant="outline" className="border-cyber-emerald/30 text-cyber-emerald bg-cyber-emerald/10 text-[10px] font-mono">
               CONTEXT: ON
             </Badge>
