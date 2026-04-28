@@ -55,13 +55,11 @@ function ConceptNode({ data, selected }: ConceptNodeProps) {
                 selected ? 'ring-2 ring-white/20 scale-105' : 'hover:scale-105 hover:bg-slate-800/80',
                 isLocked ? 'opacity-80 grayscale-[50%]' : ''
             )}>
-            {/* Top handles for incoming dependencies */}
             <Handle
                 type="target"
                 position={Position.Top}
-                className="w-3 h-3 bg-slate-700 border-2 border-slate-950"
+                className="w-2 h-2 bg-slate-700/50 border-none !opacity-0"
             />
-
             <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -99,12 +97,10 @@ function ConceptNode({ data, selected }: ConceptNodeProps) {
                     />
                 </div>
             )}
-
-            {/* Bottom handles for outgoing dependencies */}
             <Handle
                 type="source"
                 position={Position.Bottom}
-                className="w-3 h-3 bg-slate-700 border-2 border-slate-950"
+                className="w-2 h-2 bg-slate-700/50 border-none !opacity-0"
             />
         </div>
     );

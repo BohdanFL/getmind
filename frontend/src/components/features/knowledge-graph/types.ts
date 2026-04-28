@@ -14,7 +14,9 @@ export interface NodeMetadata {
 export interface GraphNode {
     id: string;
     label: string;
-    type: 'core_concept' | 'sub_concept' | string;
+    type: 'module' | 'chapter' | 'concept' | string;
+    parent?: string; // New field for hierarchy
+    level?: number;  // New field for depth
     description: string;
     page_refs: number[];
     importance: number;
@@ -27,7 +29,7 @@ export interface GraphEdge {
     id: string;
     source: string;
     target: string;
-    type: 'requires' | 'related_to' | string;
+    relationship: 'parent_child' | 'requires' | 'similar_to' | 'contradicts' | string;
     label?: string;
     weight?: number;
 }
