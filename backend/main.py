@@ -176,25 +176,25 @@ async def test_extraction(file_id: str):
             raise HTTPException(status_code=404, detail="File not found")
 
     from app.ingestion.pdf_parser import DocumentIngestor
+    from app.extraction import extraction_service
+    
     ingestor = DocumentIngestor()
 
     if not ingestor.api_key:
         return {"error": "DATALAB_API_KEY is not set. Please set it in .env to test real extraction."}
 
     try:
+        # Phase 1: Ingestion
         markdown_text = await ingestor.convert_pdf_to_markdown(file_path)
         chunks = ingestor.split_markdown(markdown_text)
         
-        # Serialize chunks for JSON response
-        serialized_chunks = [
-            {"page_content": chunk.page_content, "metadata": chunk.metadata} 
-            for chunk in chunks
-        ]
+        # Phase 2: Skeleton Extraction
+        skeleton_graph = await extraction_service.extract_skeleton(chunks)
         
         return {
             "file_id": file_id,
-            "total_chunks": len(chunks),
-            "preview_chunks": serialized_chunks[:5] # Return first 5 chunks as preview
+            "total_chunks_processed": len(chunks),
+            "graph": skeleton_graph.model_dump()
         }
     except Exception as e:
         import traceback

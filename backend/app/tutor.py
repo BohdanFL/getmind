@@ -47,7 +47,7 @@ class SocraticTutor:
         api_key = os.getenv("GOOGLE_API_KEY")
         self.client = genai.Client(
             api_key=api_key,
-            http_options={'timeout': 600.0}
+            http_options={'timeout': 600000.0}
         )
         self.system_instruction = SOCRATIC_SYSTEM_PROMPT
 
