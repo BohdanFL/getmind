@@ -157,6 +157,48 @@ async def chat_endpoint(request: ChatRequest):
         print(f"Error in chat: {e}")
         return {"reply": "Вибач, я не зміг обробити твоє запитання."}
 
+@app.get("/extract/test/{file_id}")
+async def test_extraction(file_id: str):
+    """
+    Endpoint for testing the DocumentIngestor (PDF to Markdown conversion and chunking).
+    """
+    file_path = os.path.join("uploads", f"{file_id}.pdf")
+    if not os.path.exists(file_path):
+        if file_id == "default":
+            upload_dir = "uploads"
+            if os.path.exists(upload_dir):
+                files = [f for f in os.listdir(upload_dir) if f.endswith(".pdf")]
+                if files:
+                    file_path = os.path.join(upload_dir, files[0])
+                else:
+                    raise HTTPException(status_code=404, detail="Default PDF not found")
+        else:
+            raise HTTPException(status_code=404, detail="File not found")
 
+    from app.ingestion.pdf_parser import DocumentIngestor
+    ingestor = DocumentIngestor()
+
+    if not ingestor.api_key:
+        return {"error": "DATALAB_API_KEY is not set. Please set it in .env to test real extraction."}
+
+    try:
+        markdown_text = await ingestor.convert_pdf_to_markdown(file_path)
+        chunks = ingestor.split_markdown(markdown_text)
+        
+        # Serialize chunks for JSON response
+        serialized_chunks = [
+            {"page_content": chunk.page_content, "metadata": chunk.metadata} 
+            for chunk in chunks
+        ]
+        
+        return {
+            "file_id": file_id,
+            "total_chunks": len(chunks),
+            "preview_chunks": serialized_chunks[:5] # Return first 5 chunks as preview
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
